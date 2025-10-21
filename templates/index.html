@@ -1,0 +1,1723 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Kolokwa Connect - Preserving Liberian Language Heritage</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="Kolokwa Dictionary, Liberian Language, Digital Dictionary" name="keywords">
+    <meta content="The first comprehensive digital dictionary for Kolokwa - preserving Liberian linguistic heritage" name="description">
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet"> 
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <!-- Libraries Stylesheet -->
+    <link href="{% static 'lib/owlcarousel/assets/owl.carousel.min.css' %}" rel="stylesheet">
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+
+<style>
+    :root {
+        --primary-color: #1a56db;
+        --secondary-color: #ff6b35;
+        --accent-color: #ffd23f;
+        --text-dark: #1f2937;
+        --text-light: #6b7280;
+        --bg-light: #f9fafb;
+        --border-light: #e5e7eb;
+    }
+
+    /* Hero Section */
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%,#1a56db 100%);
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        padding: 120px 0 80px;
+    }
+
+    .hero-title {
+        font-size: 4rem;
+        font-weight: 800;
+        color: white;
+        margin-bottom: 1.5rem;
+        animation: fadeInUp 0.8s ease-out;
+    }
+
+    .hero-subtitle {
+        font-size: 1.5rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 3rem;
+        animation: fadeInUp 0.8s ease-out 0.2s backwards;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Translator Card */
+    .translator-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        padding: 0;
+        overflow: hidden;
+        animation: fadeInUp 0.8s ease-out 0.4s backwards;
+        max-width: 1000px;
+        margin: 0 auto 100px;
+    }
+
+    .translator-header {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        padding: 20px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .translator-title {
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .ai-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .translator-body {
+        padding: 30px;
+    }
+
+    .language-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .lang-selector {
+        background: var(--bg-light);
+        border: 2px solid transparent;
+        padding: 12px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        color: var(--text-dark);
+        cursor: pointer;
+        transition: all 0.3s;
+        min-width: 140px;
+        text-align: center;
+    }
+
+    .lang-selector:hover {
+        border-color: var(--primary-color);
+        background: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .lang-selector:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .swap-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: var(--text-light);
+    }
+
+    .swap-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: rotate(180deg);
+        background: var(--bg-light);
+    }
+
+    .translation-area {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 20px;
+    }
+
+    .text-input-wrapper {
+        position: relative;
+    }
+
+    .text-input {
+        width: 100%;
+        min-height: 200px;
+        padding: 20px;
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        resize: vertical;
+        transition: all 0.3s;
+        font-family: inherit;
+    }
+
+    .text-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .text-output {
+        background: var(--bg-light);
+        border-color: transparent;
+    }
+
+    .char-counter {
+        position: absolute;
+        bottom: 10px;
+        right: 15px;
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+
+    .action-buttons {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .translate-btn {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        border: none;
+        padding: 14px 40px;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .translate-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .translate-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .copy-btn {
+        background: transparent;
+        border: 2px solid var(--border-light);
+        color: var(--text-dark);
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .copy-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: var(--bg-light);
+    }
+
+    /* Quick Examples */
+    .examples-section {
+        background: var(--bg-light);
+        padding: 20px;
+        border-radius: 12px;
+        margin-top: 30px;
+    }
+
+    .example-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .example-chip {
+        background: white;
+        border: 2px solid var(--border-light);
+        padding: 10px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.95rem;
+    }
+
+    .example-chip:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Stats Section */
+    .stats-section {
+        background: white;
+        padding: 80px 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .stat-card {
+        text-align: center;
+        padding: 30px;
+        border-radius: 16px;
+        background: var(--bg-light);
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        background: white;
+    }
+
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        margin: 0 auto 20px;
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text-dark);
+        margin-bottom: 10px;
+    }
+
+    .stat-label {
+        color: var(--text-light);
+        font-size: 1rem;
+    }
+
+    /* Dictionary Search */
+    .search-section {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 80px 0;
+    }
+
+    .search-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .search-box {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .search-input-group {
+        display: flex;
+        padding: 10px;
+    }
+
+    .search-input {
+        flex: 1;
+        border: none;
+        padding: 20px;
+        font-size: 1.1rem;
+        outline: none;
+    }
+
+    .search-btn {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        border: none;
+        padding: 20px 40px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .search-btn:hover {
+        transform: scale(1.05);
+    }
+
+    /* Loading Animation */
+    .loading-dots {
+        display: inline-flex;
+        gap: 5px;
+    }
+
+    .loading-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+        0%, 80%, 100% {
+            transform: scale(0);
+            opacity: 0.5;
+        }
+        40% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    /* Recent Words Grid */
+    .words-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+        margin-top: 40px;
+    }
+
+    .word-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        border: 2px solid var(--border-light);
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .word-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .word-kolokwa {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+    }
+
+    .word-english {
+        color: var(--text-dark);
+        margin-bottom: 10px;
+    }
+
+    .word-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .word-type {
+        background: var(--bg-light);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.2rem;
+        }
+        
+        .translation-area {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .language-toggle {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+</head>
+
+<body>
+    <!-- Navbar Start -->
+    <div class="container-fluid p-0">
+        <nav class="navbar navbar-expand-lg bg-white navbar-light py-3 py-lg-0 px-lg-5">
+            <a href="{% url 'home' %}" class="navbar-brand ml-lg-3">
+                <img src="{% static 'img/logo.png' %}" alt="Kolokwa Logo" style="height: 40px;">
+            </a>
+            <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbarCollapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-between px-lg-3" id="navbarCollapse">
+                <div class="navbar-nav mx-auto py-0">
+                    <a href="{% url 'home' %}" class="nav-item nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a>
+                    <a href="{% url 'dictionary:entry-list' %}" class="nav-item nav-link {% if request.resolver_match.url_name == 'entry-list' %}active{% endif %}">Dictionary</a>
+                    <a href="{% url 'dictionary:entry-contribute' %}" class="nav-item nav-link {% if request.resolver_match.url_name == 'entry-contribute' %}active{% endif %}">Contribute</a>
+                    <div class="nav-item dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Community</a>
+                        <div class="dropdown-menu m-0">
+                            <a href="{% url 'users:leaderboard' %}" class="dropdown-item">Leaderboard</a>
+                            <a href="{% url 'dictionary:entry-review-list' %}" class="dropdown-item">Review Queue</a>
+                            <a href="{% url 'users:me-contributions' %}" class="dropdown-item">My Contributions</a>
+                            <a href="{% url 'users:me-profile' %}" class="dropdown-item">My Profile</a>
+                        </div>
+                    </div>
+                    <a href="{% url 'about' %}" class="nav-item nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}">About</a>
+                </div>
+                {% if user.is_authenticated %}
+                    <div class="dropdown">
+                        <a href="#" class="btn btn-primary py-2 px-4 dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-user mr-2"></i>{{ user.username }}
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right m-0">
+                            <a href="{% url 'users:me-profile' %}" class="dropdown-item">
+                                <i class="fa fa-user mr-2"></i>Profile
+                            </a>
+                            <a href="{% url 'users:me-contributions' %}" class="dropdown-item">
+                                <i class="fa fa-list mr-2"></i>My Contributions
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'account_logout' %}" class="dropdown-item">
+                                <i class="fa fa-sign-out-alt mr-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{% url 'account_login' %}" class="btn btn-primary py-2 px-4 d-none d-lg-block">Join Us</a>
+                {% endif %}
+            </div>
+        </nav>
+    </div>
+    <!-- Navbar End -->
+
+
+<!-- Hero Section with Translator -->
+<section class="hero-section">
+    <div class="hero-pattern"></div>
+    <div class="container hero-content">
+        <div class="text-center text-white mb-5">
+            <h1 class="hero-title">Kolokwa Connect</h1>
+            <p class="hero-subtitle">Preserving Liberian Language Heritage Through Technology</p>
+        </div>
+
+        <!-- AI Translator Card -->
+        <div class="translator-card">
+            <div class="translator-header">
+                <h3 class="translator-title">Kolokwa Translation Assistant</h3>
+                <span class="ai-badge">
+                    <i class="fas fa-robot mr-2"></i>AI-Powered
+                </span>
+            </div>
+
+            <div class="translator-body">
+                <!-- Language Toggle -->
+                <div class="language-toggle">
+                    <select class="lang-selector" id="sourceLang">
+                        <option value="english">English</option>
+                        <option value="kolokwa">Kolokwa</option>
+                    </select>
+                    
+                    <button class="swap-btn" onclick="swapLanguages()" title="Swap languages">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                    
+                    <select class="lang-selector" id="targetLang">
+                        <option value="kolokwa">Kolokwa</option>
+                        <option value="english">English</option>
+                    </select>
+                </div>
+
+                <!-- Translation Areas -->
+                <div class="translation-area">
+                    <div class="text-input-wrapper">
+                        <textarea 
+                            class="text-input" 
+                            id="sourceText" 
+                            placeholder="Type or paste text here..."
+                            maxlength="5000"></textarea>
+                        <span class="char-counter">
+                            <span id="charCount">0</span> / 5000
+                        </span>
+                    </div>
+                    
+                    <div class="text-input-wrapper">
+                        <textarea 
+                            class="text-input text-output" 
+                            id="targetText" 
+                            placeholder="Translation will appear here..."
+                            readonly></textarea>
+                        <div id="loadingIndicator" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                            <div class="loading-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="translate-btn" onclick="translateText()" id="translateBtn">
+                        <i class="fas fa-language"></i>
+                        <span>Translate</span>
+                    </button>
+                    
+                    <button class="copy-btn" onclick="copyTranslation()" id="copyBtn" style="display: none;">
+                        <i class="far fa-copy"></i>
+                        <span>Copy</span>
+                    </button>
+                </div>
+
+                <!-- Quick Examples -->
+                <div class="examples-section">
+                    <p style="margin: 0; color: var(--text-light); font-weight: 600;">Quick phrases to try:</p>
+                    <div class="example-chips">
+                        <button class="example-chip" onclick="setExample('Good morning, how are you?')">
+                            Good morning, how are you?
+                        </button>
+                        <button class="example-chip" onclick="setExample('Thank you very much')">
+                            Thank you very much
+                        </button>
+                        <button class="example-chip" onclick="setExample('Welcome to Liberia')">
+                            Welcome to Liberia
+                        </button>
+                        <button class="example-chip" onclick="setExample('What is your name?')">
+                            What is your name?
+                        </button>
+                        <button class="example-chip" onclick="setExample('I love you')">
+                            I love you
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="stats-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-4 font-weight-bold">Our Growing Community</h2>
+            <p class="lead text-muted">Join thousands preserving Kolokwa for future generations</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="stat-number" data-count="{{ word_count }}">0</div>
+                <div class="stat-label">Dictionary Words</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-number" data-count="{{ contributor_count }}">0</div>
+                <div class="stat-label">Active Contributors</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-language"></i>
+                </div>
+                <div class="stat-number" data-count="{{ translation_count }}">0</div>
+                <div class="stat-label">Translations Made</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="stat-number" data-count="{{ example_count }}">0</div>
+                <div class="stat-label">Example Sentences</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- Update the Dictionary Search Section for AJAX -->
+<section class="search-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-4 font-weight-bold">Explore the Dictionary</h2>
+            <p class="lead text-muted">Search through thousands of Kolokwa words and phrases</p>
+        </div>
+        
+        <div class="search-container">
+            <div class="search-box">
+                <div class="search-input-group">
+                    <input 
+                        type="text" 
+                        id="dictionarySearch"
+                        name="q" 
+                        class="search-input" 
+                        placeholder="Search for words in Kolokwa or English..."
+                        value="{{ query }}">
+                    <button type="button" onclick="performSearch()" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <span class="text-muted">Popular searches:</span>
+                <div class="example-chips mt-2" style="justify-content: center;">
+                    <button onclick="searchWord('hello')" class="example-chip" style="text-decoration: none; border: none; background: white;">hello</button>
+                    <button onclick="searchWord('thank you')" class="example-chip" style="text-decoration: none; border: none; background: white;">thank you</button>
+                    <button onclick="searchWord('friend')" class="example-chip" style="text-decoration: none; border: none; background: white;">friend</button>
+                    <button onclick="searchWord('family')" class="example-chip" style="text-decoration: none; border: none; background: white;">family</button>
+                    <button onclick="searchWord('food')" class="example-chip" style="text-decoration: none; border: none; background: white;">food</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Search Results Container (Always present but hidden initially) -->
+<section id="searchResultsSection" class="py-5 bg-white" style="display: none;">
+    <div class="container">
+        <h3 class="mb-4">Search Results for "<span id="searchQuery" style="color: var(--primary-color);"></span>"</h3>
+        
+        <div id="searchResultsContainer">
+            <!-- Results will be dynamically inserted here -->
+        </div>
+    </div>
+</section>
+
+<!-- Recent Words Section -->
+{% if recent_words %}
+<section class="py-5" style="background: var(--bg-light);">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-4 font-weight-bold">Recently Added</h2>
+            <p class="lead text-muted">Fresh contributions from our community</p>
+        </div>
+        
+        <div class="words-grid">
+            {% for word in recent_words %}
+            <a href="{% url 'dictionary:entry-detail' word.id %}" style="text-decoration: none;">
+                <div class="word-card">
+                    <div class="word-kolokwa">{{ word.koloqua_text }}</div>
+                    <div class="word-english">{{ word.english_translation }}</div>
+                    <div class="word-meta">
+                        <span class="word-type">{{ word.part_of_speech }}</span>
+                        <small class="text-muted">{{ word.created_at|timesince }} ago</small>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="{% url 'dictionary:entry-list' %}" class="btn btn-lg" style="background: linear-gradient(135deg, #667eea 0%, #1a56db 100%); color: white; padding: 15px 40px; border-radius: 8px; font-weight: 600;">
+                Browse Full Dictionary <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+    <!-- Footer Start -->
+    <div class="container-fluid position-relative overlay-top bg-dark text-white-50 py-5" style="margin-top: 90px;">
+        <div class="container mt-5 pt-5">
+            <div class="row">
+                <div class="col-md-6 mb-5">
+                    <a href="{% url 'home' %}" class="navbar-brand">
+                        <h1 class="mt-n2 text-uppercase text-white"><i class="fa fa-book-reader mr-3"></i>Kolokwa Connect</h1>
+                    </a>
+                    <p class="m-0">Building a living dictionary for Liberian Kolokwa through community collaboration and AI-powered tools. Preserving our linguistic heritage for future generations.</p>
+                </div>
+                <div class="col-md-6 mb-5">
+                    <h3 class="text-white mb-4">Newsletter</h3>
+                    <div class="w-100">
+                        <div class="input-group">
+                            <input type="text" class="form-control border-light" style="padding: 30px;" placeholder="Your Email Address">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary px-4">Sign Up</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-5">
+                    <h3 class="text-white mb-4">Get In Touch</h3>
+                    <p><i class="fa fa-map-marker-alt mr-2"></i>Monrovia, Liberia</p>
+                    <p><i class="fa fa-phone-alt mr-2"></i>+231 88 555 0000</p>
+                    <p><i class="fa fa-envelope mr-2"></i>info@kolokwaconnect.com</p>
+                    <div class="d-flex justify-content-start mt-4">
+                        <a class="text-white mr-4" href="#"><i class="fab fa-2x fa-twitter"></i></a>
+                        <a class="text-white mr-4" href="#"><i class="fab fa-2x fa-facebook-f"></i></a>
+                        <a class="text-white mr-4" href="#"><i class="fab fa-2x fa-linkedin-in"></i></a>
+                        <a class="text-white" href="#"><i class="fab fa-2x fa-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-5">
+                    <h3 class="text-white mb-4">Quick Links</h3>
+                    <div class="d-flex flex-column justify-content-start">
+                        <a class="text-white-50 mb-2" href="{% url 'dictionary:entry-list' %}"><i class="fa fa-angle-right mr-2"></i>Browse Dictionary</a>
+                        <a class="text-white-50 mb-2" href="{% url 'dictionary:entry-contribute' %}"><i class="fa fa-angle-right mr-2"></i>Add Word</a>
+                        <a class="text-white-50 mb-2" href="{% url 'users:leaderboard' %}"><i class="fa fa-angle-right mr-2"></i>Top Contributors</a>
+                        <a class="text-white-50 mb-2" href="{% url 'about' %}"><i class="fa fa-angle-right mr-2"></i>About Us</a>
+                        <a class="text-white-50" href="#"><i class="fa fa-angle-right mr-2"></i>Contact</a>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-5">
+                    <h3 class="text-white mb-4">Resources</h3>
+                    <div class="d-flex flex-column justify-content-start">
+                        <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>Help Center</a>
+                        <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>Contribution Guidelines</a>
+                        <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>API Documentation</a>
+                        <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>Mobile App</a>
+                        <a class="text-white-50" href="#"><i class="fa fa-angle-right mr-2"></i>Partners</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid bg-dark text-white-50 border-top py-4" style="border-color: rgba(256, 256, 256, .1) !important;">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-left mb-3 mb-md-0">
+                    <p class="m-0">© 2025 <a class="text-white" href="#">Kolokwa</a>. All Rights Reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-right">
+                    <p class="m-0">Made with <i class="fa fa-heart text-danger"></i> for Liberia</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Footer End -->
+
+    <!-- Back to Top -->
+    <a href="#" class="btn btn-lg btn-primary rounded-0 btn-lg-square back-to-top"><i class="fa fa-angle-double-up"></i></a>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'lib/easing/easing.min.js' %}"></script>
+    <script src="{% static 'lib/waypoints/waypoints.min.js' %}"></script>
+    <script src="{% static 'lib/counterup/counterup.min.js' %}"></script>
+    <script src="{% static 'lib/owlcarousel/owl.carousel.min.js' %}"></script>
+
+    <!-- Template Javascript -->
+    <script src="{% static 'js/main.js' %}"></script>
+    <script>
+// Enhanced translator.js - RAG-powered Kolokwa Translator Frontend
+// Integrates with RAG backend API for semantic search and translation
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const API_CONFIG = {
+    NL_QUERY: '/api/nl/query/',  // RAG translation endpoint
+    DICTIONARY_SEARCH: '/dictionary/api/entries/search/',  // Dictionary search
+    BASE_URL: window.location.origin
+};
+
+// Translation state management
+const translationState = {
+    inProgress: false,
+    currentQuery: null,
+    lastResults: null
+};
+
+// ============================================================================
+// CSRF TOKEN HELPER
+// ============================================================================
+
+function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTranslator();
+    initializeSearch();
+    initializeAnimations();
+    checkInitialState();
+});
+
+/**
+ * Initialize translator UI and event listeners
+ */
+function initializeTranslator() {
+    const sourceText = document.getElementById('sourceText');
+    const translateBtn = document.getElementById('translateBtn');
+    const charCount = document.getElementById('charCount');
+    
+    if (!sourceText) return;
+    
+    // Character counter with auto-resize
+    sourceText.addEventListener('input', function() {
+        const count = this.value.length;
+        if (charCount) {
+            charCount.textContent = count;
+            
+            // Color coding for character limit
+            if (count > 4500) {
+                charCount.style.color = '#ef4444';
+            } else if (count > 4000) {
+                charCount.style.color = '#f59e0b';
+            } else {
+                charCount.style.color = 'var(--text-light)';
+            }
+        }
+        
+        // Auto-resize textarea
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 400) + 'px';
+        
+        // Enable/disable translate button
+        if (translateBtn) {
+            translateBtn.disabled = count === 0 || translationState.inProgress;
+        }
+    });
+    
+    // Keyboard shortcuts
+    sourceText.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + Enter to translate
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            translateText();
+        }
+        
+        // Escape to clear
+        if (e.key === 'Escape') {
+            clearTranslation();
+        }
+    });
+    
+    // Sync language selectors
+    const sourceLang = document.getElementById('sourceLang');
+    const targetLang = document.getElementById('targetLang');
+    
+    if (sourceLang && targetLang) {
+        sourceLang.addEventListener('change', function() {
+            if (this.value === targetLang.value) {
+                targetLang.value = this.value === 'english' ? 'kolokwa' : 'english';
+            }
+        });
+        
+        targetLang.addEventListener('change', function() {
+            if (this.value === sourceLang.value) {
+                sourceLang.value = this.value === 'english' ? 'kolokwa' : 'english';
+            }
+        });
+    }
+}
+
+/**
+ * Initialize dictionary search functionality
+ */
+function initializeSearch() {
+    const searchInput = document.getElementById('dictionarySearch');
+    let searchTimeout;
+    
+    if (!searchInput) return;
+    
+    // Search on Enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+    
+    // Debounced live search (searches as you type)
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length > 2) {
+            searchTimeout = setTimeout(() => {
+                performSearch();
+            }, 500); // Wait 500ms after user stops typing
+        } else if (query.length === 0) {
+            hideSearchResults();
+        }
+    });
+    
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const query = urlParams.get('q');
+        
+        if (query) {
+            searchInput.value = query;
+            performSearch();
+        } else {
+            searchInput.value = '';
+            hideSearchResults();
+        }
+    });
+}
+
+/**
+ * Check for initial state (URL parameters)
+ */
+function checkInitialState() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    const searchInput = document.getElementById('dictionarySearch');
+    
+    if (query && searchInput) {
+        searchInput.value = query;
+        performSearch();
+    }
+}
+
+// ============================================================================
+// TRANSLATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Main translation function using RAG API
+ */
+async function translateText() {
+    const sourceText = document.getElementById('sourceText');
+    const targetText = document.getElementById('targetText');
+    const translateBtn = document.getElementById('translateBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const sourceLang = document.getElementById('sourceLang');
+    const targetLang = document.getElementById('targetLang');
+    
+    // Validation
+    if (!sourceText || !sourceText.value.trim()) {
+        shakeElement(sourceText);
+        return;
+    }
+    
+    if (translationState.inProgress) {
+        return;
+    }
+    
+    const inputText = sourceText.value.trim();
+    const fromLang = sourceLang ? sourceLang.value : 'english';
+    const toLang = targetLang ? targetLang.value : 'kolokwa';
+    
+    // Build query for RAG system
+    let query;
+    if (fromLang === 'english' && toLang === 'kolokwa') {
+        query = `How you say "${inputText}" in Kolokwa?`;
+    } else if (fromLang === 'kolokwa' && toLang === 'english') {
+        query = `What does "${inputText}" mean in English?`;
+    } else {
+        // Same language - ask for explanation
+        query = `Tell me about: ${inputText}`;
+    }
+    
+    // UI updates - start loading
+    translationState.inProgress = true;
+    translationState.currentQuery = query;
+    
+    if (translateBtn) {
+        translateBtn.disabled = true;
+        translateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Translating...</span>';
+    }
+    if (targetText) {
+        targetText.value = '';
+        targetText.style.opacity = '0.5';
+    }
+    if (copyBtn) copyBtn.style.display = 'none';
+    if (loadingIndicator) loadingIndicator.style.display = 'block';
+    
+    try {
+        const response = await fetch(API_CONFIG.NL_QUERY, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ query: query })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Display translation with animation
+        if (data.response) {
+            if (targetText) {
+                // Fade in animation
+                targetText.style.opacity = '0';
+                targetText.value = data.response;
+                
+                setTimeout(() => {
+                    targetText.style.transition = 'opacity 0.3s ease-in';
+                    targetText.style.opacity = '1';
+                    
+                    // Auto-resize
+                    targetText.style.height = 'auto';
+                    targetText.style.height = Math.min(targetText.scrollHeight, 400) + 'px';
+                }, 50);
+            }
+            
+            // Show copy button with animation
+            if (copyBtn) {
+                copyBtn.style.display = 'inline-flex';
+                copyBtn.style.animation = 'fadeIn 0.3s ease-in';
+            }
+            
+            // Store results
+            translationState.lastResults = data;
+            
+            // Track analytics
+            trackTranslation(fromLang, toLang, inputText, true);
+            
+            
+        } else {
+            throw new Error('No translation received from server');
+        }
+        
+    } catch (error) {
+        console.error('Translation error:', error);
+        
+        if (targetText) {
+            targetText.value = `⚠️ ${error.message || 'Translation service error. Please try again or rephrase your query.'}`;
+            targetText.style.opacity = '1';
+        }
+        
+        trackTranslation(fromLang, toLang, inputText, false);
+        
+    } finally {
+        // Reset UI
+        translationState.inProgress = false;
+        
+        if (translateBtn) {
+            translateBtn.disabled = false;
+            translateBtn.innerHTML = '<i class="fas fa-language"></i> <span>Translate</span>';
+        }
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+        if (targetText) {
+            targetText.style.opacity = '1';
+        }
+    }
+}
+
+/**
+ * Copy translation to clipboard
+ */
+function copyTranslation() {
+    const targetText = document.getElementById('targetText');
+    const copyBtn = document.getElementById('copyBtn');
+    
+    if (!targetText || !targetText.value) {
+        return;
+    }
+    
+    // Modern clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(targetText.value)
+            .then(() => {
+                showCopySuccess(copyBtn);
+            })
+            .catch(() => {
+                fallbackCopy(targetText, copyBtn);
+            });
+    } else {
+        fallbackCopy(targetText, copyBtn);
+    }
+}
+
+/**
+ * Fallback copy method for older browsers
+ */
+function fallbackCopy(targetText, copyBtn) {
+    targetText.select();
+    targetText.setSelectionRange(0, 99999); // For mobile
+    
+    try {
+        document.execCommand('copy');
+        showCopySuccess(copyBtn);
+    } catch (err) {
+        console.error('Could not copy text: ', err);
+    }
+}
+
+/**
+ * Show visual feedback for successful copy
+ */
+function showCopySuccess(copyBtn) {
+    if (!copyBtn) return;
+    
+    const originalHTML = copyBtn.innerHTML;
+    copyBtn.innerHTML = '<i class="fas fa-check"></i> <span>Copied!</span>';
+    copyBtn.style.background = '#10b981';
+    copyBtn.style.color = 'white';
+    copyBtn.style.borderColor = '#10b981';
+    
+    setTimeout(() => {
+        copyBtn.innerHTML = originalHTML;
+        copyBtn.style.background = '';
+        copyBtn.style.color = '';
+        copyBtn.style.borderColor = '';
+    }, 2000);
+}
+
+/**
+ * Clear translation and reset form
+ */
+function clearTranslation() {
+    const sourceText = document.getElementById('sourceText');
+    const targetText = document.getElementById('targetText');
+    const charCount = document.getElementById('charCount');
+    const copyBtn = document.getElementById('copyBtn');
+    
+    if (sourceText) {
+        sourceText.value = '';
+        sourceText.style.height = 'auto';
+    }
+    if (targetText) {
+        targetText.value = '';
+        targetText.style.height = 'auto';
+    }
+    if (charCount) charCount.textContent = '0';
+    if (copyBtn) copyBtn.style.display = 'none';
+    
+    translationState.lastResults = null;
+}
+
+/**
+ * Swap source and target languages
+ */
+function swapLanguages() {
+    const sourceLang = document.getElementById('sourceLang');
+    const targetLang = document.getElementById('targetLang');
+    const sourceText = document.getElementById('sourceText');
+    const targetText = document.getElementById('targetText');
+    
+    if (sourceLang && targetLang) {
+        // Swap language selections with animation
+        const swapBtn = document.querySelector('.swap-btn');
+        if (swapBtn) {
+            swapBtn.style.transform = 'rotate(180deg)';
+            setTimeout(() => {
+                swapBtn.style.transform = '';
+            }, 300);
+        }
+        
+        const temp = sourceLang.value;
+        sourceLang.value = targetLang.value;
+        targetLang.value = temp;
+        
+        // Swap text content if translation exists
+        if (sourceText && targetText && targetText.value) {
+            const tempText = sourceText.value;
+            
+            // Fade animation
+            sourceText.style.opacity = '0.5';
+            targetText.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                sourceText.value = targetText.value;
+                targetText.value = tempText;
+                
+                sourceText.style.opacity = '1';
+                targetText.style.opacity = '1';
+                
+                // Update character count
+                const charCount = document.getElementById('charCount');
+                if (charCount) {
+                    charCount.textContent = sourceText.value.length;
+                }
+                
+                // Resize textareas
+                sourceText.style.height = 'auto';
+                sourceText.style.height = Math.min(sourceText.scrollHeight, 400) + 'px';
+                targetText.style.height = 'auto';
+                targetText.style.height = Math.min(targetText.scrollHeight, 400) + 'px';
+            }, 200);
+        }
+    }
+}
+
+/**
+ * Set example text and auto-translate
+ */
+function setExample(text) {
+    const sourceText = document.getElementById('sourceText');
+    const targetText = document.getElementById('targetText');
+    const charCount = document.getElementById('charCount');
+    const sourceLang = document.getElementById('sourceLang');
+    const targetLang = document.getElementById('targetLang');
+    const copyBtn = document.getElementById('copyBtn');
+    
+    if (sourceText) {
+        sourceText.value = text;
+        sourceText.style.height = 'auto';
+        sourceText.style.height = Math.min(sourceText.scrollHeight, 400) + 'px';
+        
+        if (charCount) {
+            charCount.textContent = text.length;
+        }
+        
+        // Set source to English for examples
+        if (sourceLang) sourceLang.value = 'english';
+        if (targetLang) targetLang.value = 'kolokwa';
+        
+        // Clear previous translation
+        if (targetText) targetText.value = '';
+        if (copyBtn) copyBtn.style.display = 'none';
+        
+        // Auto-translate after a short delay
+        setTimeout(() => translateText(), 300);
+    }
+}
+
+// ============================================================================
+// DICTIONARY SEARCH FUNCTIONS
+// ============================================================================
+
+/**
+ * Perform dictionary search
+ */
+async function performSearch() {
+    const searchInput = document.getElementById('dictionarySearch');
+    const query = searchInput ? searchInput.value.trim() : '';
+    
+    if (!query) {
+        hideSearchResults();
+        return;
+    }
+    
+    // Update URL without reloading
+    const newUrl = `${window.location.pathname}?q=${encodeURIComponent(query)}`;
+    window.history.pushState({path: newUrl}, '', newUrl);
+    
+    // Show loading state
+    showSearchLoading(query);
+    
+    try {
+        const response = await fetch(
+            `${API_CONFIG.DICTIONARY_SEARCH}?q=${encodeURIComponent(query)}`,
+            {
+                headers: {
+                    'Accept': 'application/json',
+                }
+            }
+        );
+        
+        if (response.ok) {
+            const data = await response.json();
+            displaySearchResults(data.results || data, query);
+        } else {
+            showSearchError(query);
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        showSearchError(query);
+    }
+}
+
+/**
+ * Quick search from popular searches
+ */
+function searchWord(word) {
+    const searchInput = document.getElementById('dictionarySearch');
+    if (searchInput) {
+        searchInput.value = word;
+        performSearch();
+    }
+}
+
+/**
+ * Display search results
+ */
+function displaySearchResults(results, query) {
+    const section = document.getElementById('searchResultsSection');
+    const container = document.getElementById('searchResultsContainer');
+    const querySpan = document.getElementById('searchQuery');
+    
+    if (!section || !container) return;
+    
+    if (querySpan) querySpan.textContent = query;
+    section.style.display = 'block';
+    
+    if (results && results.length > 0) {
+        let html = '<div class="words-grid">';
+        results.forEach(entry => {
+            const contributorName = entry.contributor?.username || entry.contributor || 'Anonymous';
+            const entryType = entry.entry_type || entry.part_of_speech || 'word';
+            
+            html += `
+                <a href="/dictionary/entry/${entry.id}/" style="text-decoration: none;">
+                    <div class="word-card">
+                        <div class="word-kolokwa">${escapeHtml(entry.koloqua_text)}</div>
+                        <div class="word-english">${escapeHtml(entry.english_translation)}</div>
+                        ${entry.example_sentence_english ? `
+                            <div style="font-size: 0.9rem; color: var(--text-light); margin-top: 8px; font-style: italic;">
+                                "${escapeHtml(entry.example_sentence_english).substring(0, 80)}..."
+                            </div>
+                        ` : ''}
+                        <div class="word-meta">
+                            <span class="word-type">${escapeHtml(entryType)}</span>
+                            <small class="text-muted">by ${escapeHtml(contributorName)}</small>
+                        </div>
+                    </div>
+                </a>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = `
+            <div style="background: var(--bg-light); padding: 40px; border-radius: 12px; text-align: center;">
+                <i class="fas fa-search fa-3x mb-3" style="color: var(--text-light);"></i>
+                <h4>No results found for "${escapeHtml(query)}"</h4>
+                <p class="text-muted">Try the AI translator above or help us grow the dictionary by contributing this word!</p>
+                <a href="/dictionary/contribute/" class="btn btn-primary mt-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 12px 30px; border-radius: 8px;">
+                    <i class="fas fa-plus mr-2"></i>Add This Word
+                </a>
+            </div>
+        `;
+    }
+    
+    // Smooth scroll to results
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Show loading state for search
+ */
+function showSearchLoading(query) {
+    const section = document.getElementById('searchResultsSection');
+    const container = document.getElementById('searchResultsContainer');
+    const querySpan = document.getElementById('searchQuery');
+    
+    if (!section || !container) return;
+    
+    if (querySpan) querySpan.textContent = query;
+    section.style.display = 'block';
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 60px;">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <p class="text-muted mt-3">Searching dictionary...</p>
+        </div>
+    `;
+}
+
+/**
+ * Show error state for search
+ */
+function showSearchError(query) {
+    const container = document.getElementById('searchResultsContainer');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="background: #fee2e2; padding: 40px; border-radius: 12px; text-align: center;">
+            <i class="fas fa-exclamation-circle fa-3x mb-3" style="color: #dc3545;"></i>
+            <h4>Search Error</h4>
+            <p class="text-muted">Unable to search at this time. Please try again.</p>
+            <button onclick="performSearch()" class="btn btn-primary mt-3">
+                <i class="fas fa-redo mr-2"></i>Try Again
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Hide search results
+ */
+function hideSearchResults() {
+    const section = document.getElementById('searchResultsSection');
+    if (section) {
+        section.style.display = 'none';
+    }
+}
+
+// ============================================================================
+// UI HELPERS
+// ============================================================================
+
+/**
+ * Shake element animation
+ */
+function shakeElement(element) {
+    if (!element) return;
+    
+    element.style.animation = 'shake 0.5s';
+    setTimeout(() => {
+        element.style.animation = '';
+    }, 500);
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+// ============================================================================
+// ANALYTICS & TRACKING
+// ============================================================================
+
+/**
+ * Track translation for analytics
+ */
+function trackTranslation(fromLang, toLang, text, success) {
+    console.log('Translation tracked:', {
+        fromLang,
+        toLang,
+        textLength: text.length,
+        success,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Send to analytics endpoint if available
+    // Example implementation:
+    /*
+    fetch('/api/analytics/translation/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            fromLang,
+            toLang,
+            textLength: text.length,
+            success
+        })
+    }).catch(err => console.error('Analytics error:', err));
+    */
+}
+
+// ============================================================================
+// ANIMATIONS
+// ============================================================================
+
+/**
+ * Initialize scroll animations and stats counter
+ */
+function initializeAnimations() {
+    // Animated stats counter
+    const statNumbers = document.querySelectorAll('.stat-number');
+    
+    const animateValue = (element, start, end, duration) => {
+        const range = end - start;
+        const increment = range / (duration / 16);
+        let current = start;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= end) {
+                element.textContent = end.toLocaleString();
+                clearInterval(timer);
+            } else {
+                element.textContent = Math.floor(current).toLocaleString();
+            }
+        }, 16);
+    };
+    
+    // Intersection Observer for scroll animations
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const target = entry.target;
+                const targetValue = parseInt(target.getAttribute('data-count')) || 0;
+                animateValue(target, 0, targetValue, 2000);
+                observer.unobserve(target);
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    statNumbers.forEach(stat => observer.observe(stat));
+}
+
+// ============================================================================
+// CSS ANIMATIONS
+// ============================================================================
+
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes bounce {
+        0%, 80%, 100% {
+            transform: scale(0);
+            opacity: 0.5;
+        }
+        40% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+    
+    .loading-dots {
+        display: inline-flex;
+        gap: 8px;
+    }
+    
+    .loading-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--primary-color, #2563eb);
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+    
+    .loading-dots span:nth-child(1) {
+        animation-delay: -0.32s;
+    }
+    
+    .loading-dots span:nth-child(2) {
+        animation-delay: -0.16s;
+    }
+`;
+document.head.appendChild(style);
+
+// ============================================================================
+// EXPORT FOR TESTING (if needed)
+// ============================================================================
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        translateText,
+        performSearch,
+        swapLanguages,
+        setExample,
+        copyTranslation
+    };
+}
+</script>
+</body>
+
+</html>

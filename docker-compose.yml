@@ -1,0 +1,189 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kolokwa-postgres
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-koloqua_connect}
+      POSTGRES_USER: ${DATABASE_USER:-kolokwa}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-kolokwa}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kolokwa-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: kolokwa-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kolokwa-network
+
+  # Django Web Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: kolokwa-web
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: Kolokwa_connect.settings
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "True"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: ${DATABASE_NAME:-koloqua_connect}
+      DATABASE_USER: ${DATABASE_USER:-kolokwa}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kolokwa-network
+
+  # Dictionary MCP Server - FIXED
+  dictionary-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp  # ✅ Changed from Dockerfile
+    container_name: kolokwa-dictionary-mcp
+    command: python /app/kolokwa/src/kolokwa_mcp/run_dictionary_server.py  # ✅ Correct command
+    environment:
+      DJANGO_SETTINGS_MODULE: Kolokwa_connect.settings
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: ${DATABASE_NAME:-koloqua_connect}
+      DATABASE_USER: ${DATABASE_USER:-kolokwa}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+      MCP_TRANSPORT: http
+      MCP_SERVER_NAME: kolokwa-dictionary
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: "8000"
+      MCP_AUTH_ENABLED: "False"  # ✅ Disabled for local testing
+      WORKOS_API_KEY: ${WORKOS_API_KEY}
+      WORKOS_CLIENT_ID: ${WORKOS_CLIENT_ID}
+      WORKOS_ORGANIZATION_ID: ${WORKOS_ORGANIZATION_ID:-}
+      CACHE_ENABLED: "True"
+      CACHE_TTL: "300"
+      MAX_SEARCH_RESULTS: "50"
+      RATE_LIMIT_ENABLED: "True"
+      CORS_ENABLED: "True"
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      LOG_LEVEL: DEBUG
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - kolokwa-network
+
+  # Translation MCP Server - FIXED
+  translation-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp  # ✅ Changed from Dockerfile
+    container_name: kolokwa-translation-mcp
+    command: python /app/kolokwa/src/kolokwa_mcp/run_translator_server.py  # ✅ Correct command
+    environment:
+      DJANGO_SETTINGS_MODULE: Kolokwa_connect.settings
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "False"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: ${DATABASE_NAME:-koloqua_connect}
+      DATABASE_USER: ${DATABASE_USER:-kolokwa}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+      MCP_TRANSPORT: http
+      MCP_SERVER_NAME: kolokwa-translator
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: "8000"
+      MCP_AUTH_ENABLED: "False"  # ✅ Disabled for local testing
+      WORKOS_API_KEY: ${WORKOS_API_KEY}
+      WORKOS_CLIENT_ID: ${WORKOS_CLIENT_ID}
+      WORKOS_ORGANIZATION_ID: ${WORKOS_ORGANIZATION_ID:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CACHE_ENABLED: "True"
+      CACHE_TTL: "300"
+      RATE_LIMIT_ENABLED: "True"
+      CORS_ENABLED: "True"
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      LOG_LEVEL: DEBUG
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - kolokwa-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  kolokwa-network:
+    driver: bridge

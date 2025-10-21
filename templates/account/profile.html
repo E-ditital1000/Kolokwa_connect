@@ -1,0 +1,756 @@
+<!-- account/profile.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ profile_user.get_full_name|default:profile_user.username }} - Profile | Kolokwa Connect{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #1a56db;
+        --secondary-color: #ff6b35;
+        --accent-color: #ffd23f;
+        --text-dark: #1f2937;
+        --text-light: #6b7280;
+        --bg-light: #f9fafb;
+        --border-light: #e5e7eb;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+    }
+
+    /* Hero Section */
+    .profile-hero {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        padding: 80px 0 120px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: -80px;
+    }
+
+    .hero-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .profile-hero .container {
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Profile Header Card */
+    .profile-header-card {
+        background: white;
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin-top: -60px;
+        position: relative;
+        z-index: 10;
+    }
+
+    .profile-avatar-section {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .profile-avatar {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 6px solid white;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        object-fit: cover;
+        margin-bottom: 20px;
+    }
+
+    .profile-avatar-placeholder {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 6px solid white;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3.5rem;
+        color: white;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+
+    .profile-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 5px;
+    }
+
+    .profile-username {
+        font-size: 1.1rem;
+        color: var(--text-light);
+        margin-bottom: 15px;
+    }
+
+    .profile-badges-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .level-badge {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .verified-badge {
+        background: var(--success-color);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        padding: 30px 0;
+        border-top: 2px solid var(--border-light);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-light);
+        font-weight: 500;
+    }
+
+    .profile-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 25px;
+    }
+
+    .btn-primary-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-primary-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-outline-custom {
+        background: transparent;
+        color: var(--text-dark);
+        border: 2px solid var(--border-light);
+        padding: 12px 30px;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-outline-custom:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: var(--bg-light);
+    }
+
+    /* Info Cards */
+    .info-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
+        transition: all 0.3s;
+    }
+
+    .info-card:hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .card-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .card-title i {
+        color: var(--primary-color);
+    }
+
+    /* Achievement Badges */
+    .badges-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 20px;
+    }
+
+    .badge-item {
+        background: var(--bg-light);
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .badge-item:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge-icon img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .badge-icon i {
+        font-size: 2rem;
+        color: var(--primary-color);
+    }
+
+    .badge-name {
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 5px;
+        font-size: 0.95rem;
+    }
+
+    .badge-date {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+
+    /* Contributions List */
+    .contribution-item {
+        background: var(--bg-light);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+    }
+
+    .contribution-item:hover {
+        background: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transform: translateX(5px);
+    }
+
+    .contribution-word {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+        text-decoration: none;
+    }
+
+    .contribution-word:hover {
+        text-decoration: underline;
+    }
+
+    .contribution-translation {
+        color: var(--text-dark);
+        margin-bottom: 10px;
+    }
+
+    .contribution-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .status-verified {
+        background: #d1fae5;
+        color: var(--success-color);
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: var(--warning-color);
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: var(--danger-color);
+    }
+
+    .points-badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    /* Activity Stats */
+    .activity-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .activity-stat-item {
+        text-align: center;
+        padding: 20px;
+        background: var(--bg-light);
+        border-radius: 12px;
+        transition: all 0.3s;
+    }
+
+    .activity-stat-item:hover {
+        background: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transform: translateY(-3px);
+    }
+
+    .activity-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .activity-stat-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        font-weight: 500;
+    }
+
+    .streak-icon {
+        margin-left: 5px;
+        animation: flicker 2s infinite;
+    }
+
+    @keyframes flicker {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--text-light);
+        margin-bottom: 20px;
+    }
+
+    .empty-state h5 {
+        color: var(--text-dark);
+        margin-bottom: 15px;
+    }
+
+    .empty-state p {
+        color: var(--text-light);
+        margin-bottom: 25px;
+    }
+
+    /* Member Info */
+    .member-info {
+        padding-top: 20px;
+        border-top: 2px solid var(--border-light);
+        margin-top: 20px;
+    }
+
+    .member-info-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-light);
+        margin-bottom: 10px;
+    }
+
+    .member-info-item i {
+        color: var(--primary-color);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .profile-header-card {
+            padding: 30px 20px;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .profile-actions {
+            flex-direction: column;
+        }
+
+        .badges-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .activity-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="profile-hero">
+    <div class="hero-pattern"></div>
+    <div class="container">
+        <div class="text-center text-white">
+            <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 15px;">User Profile</h1>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; font-size: 1.1rem;">
+                <a href="{% url 'home' %}" style="color: white; text-decoration: none;">Home</a>
+                <i class="fa fa-angle-double-right"></i>
+                <span>Profile</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="container" style="padding: 40px 0 80px;">
+    <!-- Messages -->
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none;">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Profile Header Card -->
+    <div class="profile-header-card">
+        <div class="profile-avatar-section">
+            {% if profile_user.profile_picture %}
+                <img src="{{ profile_user.profile_picture.url }}" alt="{{ profile_user.username }}" class="profile-avatar">
+            {% else %}
+                <div class="profile-avatar-placeholder">
+                    {{ profile_user.username|first|upper }}
+                </div>
+            {% endif %}
+
+            <h2 class="profile-name">{{ profile_user.get_full_name|default:profile_user.username }}</h2>
+            <p class="profile-username">@{{ profile_user.username }}</p>
+
+            <div class="profile-badges-row">
+                <span class="level-badge">
+                    <i class="fa fa-star"></i>
+                    {{ profile_user.get_level_display|default:"Beginner" }}
+                </span>
+                {% if profile_user.is_verified_contributor %}
+                <span class="verified-badge">
+                    <i class="fa fa-check-circle"></i>
+                    Verified Contributor
+                </span>
+                {% endif %}
+            </div>
+
+            {% if user == profile_user %}
+            <div class="profile-actions">
+                <a href="{% url 'users:me-edit' %}" class="btn-primary-gradient">
+                    <i class="fa fa-edit"></i>
+                    Edit Profile
+                </a>
+                <a href="{% url 'account_change_password' %}" class="btn-outline-custom">
+                    <i class="fa fa-key"></i>
+                    Change Password
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">{{ profile_user.points|default:0 }}</div>
+                <div class="stat-label">Points</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ total_words|default:0 }}</div>
+                <div class="stat-label">Words</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ profile_user.verifications_count|default:0 }}</div>
+                <div class="stat-label">Verified</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Left Column -->
+        <div class="col-lg-4">
+            {% if profile_user.bio %}
+            <div class="info-card">
+                <h5 class="card-title">
+                    <i class="fa fa-info-circle"></i>
+                    About
+                </h5>
+                <p style="color: var(--text-dark); line-height: 1.6;">{{ profile_user.bio|linebreaks }}</p>
+            </div>
+            {% endif %}
+
+            {% if user == profile_user %}
+            <div class="info-card">
+                <h5 class="card-title">
+                    <i class="fa fa-envelope"></i>
+                    Contact
+                </h5>
+                <div style="color: var(--text-dark);">
+                    <p style="margin-bottom: 10px;"><strong>Email:</strong> {{ profile_user.email }}</p>
+                    {% if profile_user.phone_number %}
+                    <p style="margin-bottom: 0;"><strong>Phone:</strong> {{ profile_user.phone_number }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Activity Overview -->
+            <div class="info-card">
+                <h5 class="card-title">
+                    <i class="fa fa-chart-line"></i>
+                    Activity Overview
+                </h5>
+                <div class="activity-stats-grid">
+                    <div class="activity-stat-item">
+                        <div class="activity-stat-value" style="color: var(--primary-color);">{{ total_words|default:0 }}</div>
+                        <div class="activity-stat-label">Total</div>
+                    </div>
+                    <div class="activity-stat-item">
+                        <div class="activity-stat-value" style="color: var(--success-color);">{{ verified_words|default:0 }}</div>
+                        <div class="activity-stat-label">Verified</div>
+                    </div>
+                    <div class="activity-stat-item">
+                        <div class="activity-stat-value" style="color: var(--warning-color);">{{ pending_words|default:0 }}</div>
+                        <div class="activity-stat-label">Pending</div>
+                    </div>
+                    <div class="activity-stat-item">
+                        <div class="activity-stat-value" style="color: #8b5cf6;">{{ badges|length|default:0 }}</div>
+                        <div class="activity-stat-label">Badges</div>
+                    </div>
+                    <div class="activity-stat-item">
+                        <div class="activity-stat-value" style="color: var(--danger-color);">
+                            {{ profile_user.streak.current_streak|default:0 }}
+                            <i class="fa fa-fire streak-icon"></i>
+                        </div>
+                        <div class="activity-stat-label">Streak</div>
+                    </div>
+                    <div class="activity-stat-item">
+                        <div class="activity-stat-value" style="color: #f59e0b;">
+                            {{ profile_user.streak.longest_streak|default:0 }}
+                            <i class="fa fa-award"></i>
+                        </div>
+                        <div class="activity-stat-label">Best</div>
+                    </div>
+                </div>
+
+                <div class="member-info">
+                    {% if profile_user.date_joined %}
+                    <div class="member-info-item">
+                        <i class="fa fa-user-plus"></i>
+                        <span>Member since {{ profile_user.date_joined|date:"F Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if profile_user.last_active %}
+                    <div class="member-info-item">
+                        <i class="fa fa-clock"></i>
+                        <span>Last active {{ profile_user.last_active|timesince }} ago</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-8">
+            <!-- Achievements -->
+            <div class="info-card">
+                <h5 class="card-title">
+                    <i class="fa fa-trophy"></i>
+                    Achievements
+                </h5>
+                {% if badges %}
+                <div class="badges-grid">
+                    {% for user_badge in badges %}
+                    <div class="badge-item" data-toggle="tooltip" data-placement="top" title="{{ user_badge.badge.description }}">
+                        <div class="badge-icon">
+                            {% if user_badge.badge.icon %}
+                            <img src="{{ user_badge.badge.icon.url }}" alt="{{ user_badge.badge.name }}">
+                            {% else %}
+                            <i class="fa fa-medal"></i>
+                            {% endif %}
+                        </div>
+                        <div class="badge-name">{{ user_badge.badge.name }}</div>
+                        <div class="badge-date">{{ user_badge.earned_at|date:"M d, Y" }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <i class="fa fa-medal"></i>
+                    <h5>No badges yet</h5>
+                    <p>Keep contributing to earn achievements!</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Recent Contributions -->
+            <div class="info-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h5 class="card-title" style="margin-bottom: 0;">
+                        <i class="fa fa-clock"></i>
+                        Recent Contributions
+                    </h5>
+                    {% if user == profile_user %}
+                    <a href="{% url 'users:me-contributions' %}" class="btn-outline-custom" style="padding: 8px 20px; font-size: 0.9rem;">
+                        View All
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if recent_contributions %}
+                <div>
+                    {% for entry in recent_contributions %}
+                    <div class="contribution-item">
+                        <a href="{% url 'dictionary:entry-detail' entry.id %}" class="contribution-word">
+                            {{ entry.koloqua_text }}
+                        </a>
+                        <p class="contribution-translation">{{ entry.english_translation|truncatewords:20 }}</p>
+                        <div class="contribution-meta">
+                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                <small style="color: var(--text-light);">
+                                    <i class="fa fa-calendar-alt"></i>
+                                    {{ entry.created_at|date:"M d, Y" }}
+                                </small>
+                                {% if entry.status == 'verified' %}
+                                <span class="status-badge status-verified">
+                                    <i class="fa fa-check-circle"></i>
+                                    Verified
+                                </span>
+                                {% elif entry.status == 'pending' %}
+                                <span class="status-badge status-pending">
+                                    <i class="fa fa-clock"></i>
+                                    Pending
+                                </span>
+                                {% else %}
+                                <span class="status-badge status-rejected">
+                                    <i class="fa fa-times-circle"></i>
+                                    Rejected
+                                </span>
+                                {% endif %}
+                            </div>
+                            <span class="points-badge">+{{ entry.points_awarded|default:5 }} pts</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fa fa-book"></i>
+                    <h5>No contributions yet</h5>
+                    <p>Start contributing to build your profile!</p>
+                    {% if user == profile_user %}
+                    <a href="{% url 'dictionary:entry-contribute' %}" class="btn-primary-gradient">
+                        <i class="fa fa-plus"></i>
+                        Add Your First Word
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize tooltips
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+{% endblock %}

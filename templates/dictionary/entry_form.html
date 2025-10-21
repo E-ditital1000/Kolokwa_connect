@@ -1,0 +1,922 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Contribute New Entry - Kolokwa Connect{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #1a56db;
+        --secondary-color: #ff6b35;
+        --accent-color: #ffd23f;
+        --text-dark: #1f2937;
+        --text-light: #6b7280;
+        --bg-light: #f9fafb;
+        --border-light: #e5e7eb;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+    }
+
+    /* Hero Section */
+    .contribute-hero {
+        background: linear-gradient(135deg,  #667eea 0%, #1a56db 100%);
+        padding: 80px 0 120px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: -80px;
+    }
+
+    .hero-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .hero-content {
+        text-align: center;
+        color: white;
+        position: relative;
+        z-index: 2;
+    }
+
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 15px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .hero-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.95;
+    }
+
+    /* Guidelines Card */
+    .guidelines-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        margin-top: -60px;
+        margin-bottom: 30px;
+        position: relative;
+        z-index: 10;
+        border-left: 5px solid var(--primary-color);
+    }
+
+    .guidelines-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 20px;
+    }
+
+    .guidelines-title i {
+        color: var(--primary-color);
+        font-size: 1.8rem;
+    }
+
+    .guidelines-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+    }
+
+    .guidelines-list li {
+        padding: 12px 0 12px 40px;
+        position: relative;
+        color: var(--text-dark);
+        line-height: 1.6;
+    }
+
+    .guidelines-list li:before {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        position: absolute;
+        left: 0;
+        color: var(--success-color);
+        font-size: 1.1rem;
+    }
+
+    .points-highlight {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        color: #92400e;
+    }
+
+    /* Form Card */
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .form-card-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 35px;
+        text-align: center;
+    }
+
+    .form-section {
+        padding: 30px;
+        background: var(--bg-light);
+        border-radius: 12px;
+        margin-bottom: 30px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .required-star {
+        color: var(--danger-color);
+        font-size: 1.1rem;
+    }
+
+    .optional-tag {
+        color: var(--text-light);
+        font-weight: 400;
+        font-size: 0.9rem;
+    }
+
+    .form-control-modern {
+        border: 2px solid var(--border-light);
+        border-radius: 10px;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        transition: all 0.3s;
+    }
+
+    .form-control-modern:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    .form-help-text {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .form-help-text i {
+        color: var(--primary-color);
+    }
+
+    /* Category Checkboxes */
+    .category-checkboxes {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 2px solid var(--border-light);
+        border-radius: 10px;
+        padding: 20px;
+        background: white;
+    }
+
+    .custom-control-modern {
+        padding-left: 2rem;
+        min-height: 1.5rem;
+        margin-bottom: 12px;
+    }
+
+    .custom-control-input:checked ~ .custom-control-label::before {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    /* File Upload */
+    .custom-file-label {
+        border: 2px solid var(--border-light);
+        border-radius: 10px;
+        padding: 12px 15px;
+    }
+
+    .custom-file-input:focus ~ .custom-file-label {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    /* Action Buttons */
+    .btn-primary-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-primary-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-save-draft {
+        background: white;
+        color: var(--text-dark);
+        border: 2px solid var(--border-light);
+        padding: 15px 40px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-save-draft:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: var(--bg-light);
+    }
+
+    .btn-cancel {
+        color: var(--text-light);
+        text-decoration: none;
+        padding: 15px 20px;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.3s;
+    }
+
+    .btn-cancel:hover {
+        color: var(--text-dark);
+    }
+
+    /* Success Modal */
+    .modal-content-modern {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-success-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 25px;
+        animation: scaleIn 0.5s ease-out;
+    }
+
+    @keyframes scaleIn {
+        from {
+            transform: scale(0);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .modal-success-icon i {
+        font-size: 3rem;
+        color: white;
+    }
+
+    .modal-title-success {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 15px;
+    }
+
+    .modal-text {
+        color: var(--text-light);
+        font-size: 1.1rem;
+        margin-bottom: 30px;
+    }
+
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: white;
+        padding: 20px 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .toast-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--success-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2rem;
+        }
+
+        .form-card {
+            padding: 25px;
+        }
+
+        .form-section {
+            padding: 20px;
+        }
+
+        .btn-primary-gradient,
+        .btn-save-draft {
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="contribute-hero">
+    <div class="hero-pattern"></div>
+    <div class="container">
+        <div class="hero-content">
+            <h1 class="hero-title">Contribute to Kolokwa</h1>
+            <p class="hero-subtitle">Share your knowledge and help preserve our language</p>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="container" style="padding-bottom: 80px;">
+    <!-- Guidelines Card -->
+    <div class="guidelines-card">
+        <h5 class="guidelines-title">
+            <i class="fa fa-lightbulb"></i>
+            Contribution Guidelines
+        </h5>
+        <ul class="guidelines-list">
+            <li>Ensure the word or phrase is genuinely used in Kolokwa</li>
+            <li>Provide accurate translations and clear examples</li>
+            <li>Include cultural context when relevant</li>
+            <li>Be respectful and avoid offensive content</li>
+            <li>Earn <span class="points-highlight">5 points</span> for each approved contribution!</li>
+        </ul>
+    </div>
+
+    <!-- Contribution Form -->
+    <div class="form-card">
+        <h4 class="form-card-title">Add New Dictionary Entry</h4>
+        
+        <form method="post" enctype="multipart/form-data" id="contributionForm">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="fa fa-book"></i>
+                    Basic Information
+                </h5>
+                
+                <div class="form-group">
+                    <label for="koloqua_text" class="form-label">
+                        Kolokwa Word/Phrase
+                        <span class="required-star">*</span>
+                    </label>
+                    <input type="text" 
+                           class="form-control form-control-modern" 
+                           id="koloqua_text" 
+                           name="koloqua_text" 
+                           placeholder="Enter the Kolokwa word or phrase"
+                           required>
+                    <small class="form-help-text">
+                        <i class="fa fa-info-circle"></i>
+                        Write exactly as it's spoken in Kolokwa
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="entry_type" class="form-label">
+                        Entry Type
+                        <span class="required-star">*</span>
+                    </label>
+                    <select class="form-control form-control-modern" id="entry_type" name="entry_type" required>
+                        <option value="">Select type...</option>
+                        <option value="word">Word</option>
+                        <option value="phrase">Phrase</option>
+                        <option value="idiom">Idiom</option>
+                        <option value="proverb">Proverb</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="english_translation" class="form-label">
+                        English Translation
+                        <span class="required-star">*</span>
+                    </label>
+                    <textarea class="form-control form-control-modern" 
+                              id="english_translation" 
+                              name="english_translation" 
+                              rows="3" 
+                              placeholder="What does it mean in English?"
+                              required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="literal_translation" class="form-label">
+                        Literal Translation
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <textarea class="form-control form-control-modern" 
+                              id="literal_translation" 
+                              name="literal_translation" 
+                              rows="2" 
+                              placeholder="Word-for-word translation if different from the meaning"></textarea>
+                    <small class="form-help-text">
+                        <i class="fa fa-lightbulb"></i>
+                        Example: "My hand cut" literally, but means "I'm broke"
+                    </small>
+                </div>
+            </div>
+
+            <!-- Context & Usage -->
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="fa fa-comments"></i>
+                    Context & Usage
+                </h5>
+                
+                <div class="form-group">
+                    <label for="context_explanation" class="form-label">
+                        When/How is it used?
+                        <span class="required-star">*</span>
+                    </label>
+                    <textarea class="form-control form-control-modern" 
+                              id="context_explanation" 
+                              name="context_explanation" 
+                              rows="3" 
+                              placeholder="Explain the context - formal, informal, with friends, elders, etc."
+                              required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="example_sentence_koloqua" class="form-label">
+                        Example Sentence in Kolokwa
+                        <span class="required-star">*</span>
+                    </label>
+                    <textarea class="form-control form-control-modern" 
+                              id="example_sentence_koloqua" 
+                              name="example_sentence_koloqua" 
+                              rows="2" 
+                              placeholder="Write a full sentence using this word/phrase"
+                              required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="example_sentence_english" class="form-label">
+                        Example Translation
+                        <span class="required-star">*</span>
+                    </label>
+                    <textarea class="form-control form-control-modern" 
+                              id="example_sentence_english" 
+                              name="example_sentence_english" 
+                              rows="2" 
+                              placeholder="English translation of the example sentence"
+                              required></textarea>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="fa fa-plus-circle"></i>
+                    Additional Information
+                </h5>
+                
+                <div class="form-group">
+                    <label for="pronunciation_guide" class="form-label">
+                        Pronunciation Guide
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <input type="text" 
+                           class="form-control form-control-modern" 
+                           id="pronunciation_guide" 
+                           name="pronunciation_guide" 
+                           placeholder="e.g., koh-LOH-kwah">
+                    <small class="form-help-text">
+                        <i class="fa fa-volume-up"></i>
+                        Help others pronounce it correctly
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="audio_pronunciation" class="form-label">
+                        Audio Pronunciation
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <div class="custom-file">
+                        <input type="file" 
+                               class="custom-file-input" 
+                               id="audio_pronunciation" 
+                               name="audio_pronunciation"
+                               accept="audio/*">
+                        <label class="custom-file-label" for="audio_pronunciation">Choose audio file...</label>
+                    </div>
+                    <small class="form-help-text">
+                        <i class="fa fa-microphone"></i>
+                        Upload an audio recording (MP3, WAV, etc.)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="cultural_notes" class="form-label">
+                        Cultural Notes
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <textarea class="form-control form-control-modern" 
+                              id="cultural_notes" 
+                              name="cultural_notes" 
+                              rows="3" 
+                              placeholder="Any cultural significance or background?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="region_specific" class="form-label">
+                        Region
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <input type="text" 
+                           class="form-control form-control-modern" 
+                           id="region_specific" 
+                           name="region_specific" 
+                           placeholder="e.g., Montserrado, Grand Bassa">
+                    <small class="form-help-text">
+                        <i class="fa fa-map-marker-alt"></i>
+                        Is this specific to a particular region?
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="categories" class="form-label">
+                        Categories
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <div class="category-checkboxes">
+                        {% for category in categories %}
+                        <div class="custom-control custom-checkbox custom-control-modern">
+                            <input type="checkbox" 
+                                   class="custom-control-input" 
+                                   id="category_{{ category.id }}" 
+                                   name="categories" 
+                                   value="{{ category.id }}">
+                            <label class="custom-control-label" for="category_{{ category.id }}">
+                                {{ category.name }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="tags" class="form-label">
+                        Tags
+                        <span class="optional-tag">(Optional)</span>
+                    </label>
+                    <input type="text" 
+                           class="form-control form-control-modern" 
+                           id="tags" 
+                           name="tags" 
+                           placeholder="e.g., slang, greeting, food, music">
+                    <small class="form-help-text">
+                        <i class="fa fa-tags"></i>
+                        Separate tags with commas
+                    </small>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-top: 40px;">
+                <button type="submit" class="btn-primary-gradient">
+                    <i class="fa fa-paper-plane"></i>
+                    Submit Entry
+                </button>
+                <button type="button" class="btn-save-draft" onclick="saveDraft()">
+                    <i class="fa fa-save"></i>
+                    Save Draft
+                </button>
+                <a href="{% url 'dictionary:entry-list' %}" class="btn-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-body text-center py-5 px-4">
+                <div class="modal-success-icon">
+                    <i class="fa fa-check"></i>
+                </div>
+                <h4 class="modal-title-success">Thank You!</h4>
+                <p class="modal-text">Your contribution has been submitted for review. You'll earn 10 points once it's verified!</p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary-gradient" onclick="window.location.href='{% url 'dictionary:entry-list' %}'">
+                        <i class="fa fa-book"></i>
+                        Browse Dictionary
+                    </button>
+                    <button type="button" class="btn-save-draft" onclick="location.reload()">
+                        <i class="fa fa-plus"></i>
+                        Add Another
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Update file input label
+document.querySelector('.custom-file-input').addEventListener('change', function(e) {
+    var fileName = e.target.files[0] ? e.target.files[0].name : 'Choose audio file...';
+    e.target.nextElementSibling.innerText = fileName;
+});
+
+// ====== DUPLICATE CHECKING FUNCTIONALITY ======
+let checkTimeout;
+const koloquaInput = document.getElementById('koloqua_text');
+const duplicateWarning = document.createElement('div');
+duplicateWarning.id = 'duplicate-warning';
+duplicateWarning.style.cssText = `
+    display: none;
+    margin-top: 10px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    background: #fef2f2;
+    border-left: 4px solid #ef4444;
+    color: #991b1b;
+    font-size: 0.9rem;
+`;
+koloquaInput.parentNode.appendChild(duplicateWarning);
+
+// CSS for invalid input styling
+const style = document.createElement('style');
+style.textContent = `
+    .form-control-modern.is-invalid {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    }
+`;
+document.head.appendChild(style);
+
+// Check for duplicates as user types (with debouncing)
+koloquaInput.addEventListener('input', function() {
+    clearTimeout(checkTimeout);
+    const word = this.value.trim();
+    
+    if (word.length < 2) {
+        duplicateWarning.style.display = 'none';
+        koloquaInput.classList.remove('is-invalid');
+        return;
+    }
+    
+    // Debounce: wait 500ms after user stops typing
+    checkTimeout = setTimeout(() => {
+        checkForDuplicate(word);
+    }, 500);
+});
+
+async function checkForDuplicate(word) {
+    try {
+        // Call your API endpoint to check if word exists
+        const response = await fetch(`/dictionary/api/entries/?search=${encodeURIComponent(word)}`);
+        const data = await response.json();
+        
+        // Check if any results match exactly (case-insensitive)
+        const exactMatch = data.results?.find(entry => 
+            entry.koloqua_text.toLowerCase() === word.toLowerCase() &&
+            entry.status !== 'rejected'
+        );
+        
+        if (exactMatch) {
+            const statusText = exactMatch.status === 'verified' ? 'verified' : 'pending review';
+            const actionText = exactMatch.status === 'verified' 
+                ? `<a href="/dictionary/entry/${exactMatch.id}/" target="_blank" style="color: #991b1b; text-decoration: underline; font-weight: 600;">View existing entry</a>`
+                : 'Please wait for it to be reviewed.';
+            
+            duplicateWarning.innerHTML = `
+                <i class="fa fa-exclamation-triangle"></i>
+                <strong>Word already exists!</strong> 
+                "${word}" is already in the dictionary (${statusText}). 
+                ${actionText}
+            `;
+            duplicateWarning.style.display = 'block';
+            koloquaInput.classList.add('is-invalid');
+        } else {
+            duplicateWarning.style.display = 'none';
+            koloquaInput.classList.remove('is-invalid');
+        }
+    } catch (error) {
+        console.error('Error checking for duplicate:', error);
+        // Fail silently - server-side validation will catch it
+    }
+}
+
+// ====== FORM VALIDATION AND SUBMISSION ======
+document.getElementById('contributionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Check if duplicate warning is showing
+    if (duplicateWarning.style.display === 'block') {
+        alert('This word already exists in the dictionary. Please check the existing entry or use a different word.');
+        koloquaInput.focus();
+        return false;
+    }
+    
+    // Basic validation
+    const required = this.querySelectorAll('[required]');
+    let isValid = true;
+    
+    required.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        alert('Please fill in all required fields.');
+        return false;
+    }
+    
+    // Submit form via AJAX
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.innerHTML;
+    
+    // Disable button and show loading state
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting...';
+    
+    fetch(this.action || window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Submission failed');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            $('#successModal').modal('show');
+            this.reset();
+            clearDraft();
+            duplicateWarning.style.display = 'none';
+            koloquaInput.classList.remove('is-invalid');
+        }
+    })
+    .catch(error => {
+        console.error('Submission error:', error);
+        
+        // Show error based on type
+        if (error.message.includes('already exists') || 
+            error.message.includes('already submitted') ||
+            error.message.includes('already been submitted')) {
+            
+            duplicateWarning.innerHTML = `
+                <i class="fa fa-exclamation-triangle"></i>
+                <strong>Duplicate Entry:</strong> ${error.message}
+            `;
+            duplicateWarning.style.display = 'block';
+            koloquaInput.classList.add('is-invalid');
+            koloquaInput.focus();
+        } else {
+            alert('There was an error submitting your entry: ' + error.message);
+        }
+    })
+    .finally(() => {
+        // Re-enable button
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+    });
+});
+
+// ====== DRAFT FUNCTIONALITY ======
+let draftData = {};
+
+function saveDraft() {
+    const form = document.getElementById('contributionForm');
+    const formData = new FormData(form);
+    
+    // Store in memory
+    draftData = {};
+    formData.forEach((value, key) => {
+        if (key !== 'csrfmiddlewaretoken' && key !== 'audio_pronunciation') {
+            draftData[key] = value;
+        }
+    });
+    
+    // Show notification
+    showToast('Draft saved successfully!');
+}
+
+function clearDraft() {
+    draftData = {};
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="fa fa-check"></i>
+        </div>
+        <span style="font-weight: 600;">${message}</span>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Load draft on page load
+window.addEventListener('load', function() {
+    if (Object.keys(draftData).length > 0) {
+        Object.keys(draftData).forEach(key => {
+            const field = document.querySelector(`[name="${key}"]`);
+            if (field) {
+                field.value = draftData[key];
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

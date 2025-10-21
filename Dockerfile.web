@@ -1,0 +1,86 @@
+# Dockerfile.web - Django Web Application
+# For the main Kolokwa dictionary website
+
+FROM python:3.10-slim AS builder
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt && \
+    pip install gunicorn psycopg2-binary redis
+
+# ============================================================================
+# Runtime Stage
+# ============================================================================
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=Kolokwa_connect.settings
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/staticfiles /app/media /app/logs /app/Kolokwa_connect/static && \
+    chown -R appuser:appuser /app
+
+WORKDIR /app
+
+COPY --chown=appuser:appuser . .
+
+USER appuser
+
+# Collect static files
+RUN python manage.py collectstatic --noinput 2>/dev/null || echo "Static files collection skipped"
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "Starting Kolokwa Web Application..."\n\
+echo "Current directory: $(pwd)"\n\
+echo "Python path: $(which python)"\n\
+\n\
+# Run migrations\n\
+echo "Running database migrations..."\n\
+python manage.py migrate --noinput\n\
+\n\
+# Create cache table if using database cache\n\
+echo "Creating cache table..."\n\
+python manage.py createcachetable 2>/dev/null || echo "Cache table already exists or using different cache backend"\n\
+\n\
+# Start Gunicorn\n\
+echo "Starting Gunicorn on 0.0.0.0:8000..."\n\
+exec gunicorn Kolokwa_connect.wsgi:application \\\n\
+    --bind 0.0.0.0:8000 \\\n\
+    --workers ${WORKERS:-3} \\\n\
+    --threads 2 \\\n\
+    --timeout ${TIMEOUT:-120} \\\n\
+    --access-logfile - \\\n\
+    --error-logfile - \\\n\
+    --log-level ${LOG_LEVEL:-info}\n' > /app/start-web.sh && \
+    chmod +x /app/start-web.sh
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+CMD ["/app/start-web.sh"]

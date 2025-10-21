@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+{% load account %}
+{% load form_tags %}
+
+{% block title %}{% trans "Sign In" %} - Kolokwa Connect{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary: #1a56db;
+        --accent: #ff6b35;
+        --text: #1f2937;
+        --text-secondary: #6b7280;
+        --surface: #ffffff;
+        --background: #f9fafb;
+        --border: #e5e7eb;
+        --error: #ef4444;
+    }
+
+    body {
+        background: var(--background);
+    }
+
+    /* Main Container */
+    .auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
+
+    .auth-box {
+        background: var(--surface);
+        border-radius: 20px;
+        padding: 60px;
+        max-width: 480px;
+        width: 100%;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Header */
+    .auth-header {
+        text-align: center;
+        margin-bottom: 48px;
+    }
+
+    .auth-logo {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 24px;
+        background: linear-gradient(135deg, #667eea 0%, var(--primary) 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .auth-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 8px;
+        letter-spacing: -0.5px;
+    }
+
+    .auth-subtitle {
+        font-size: 15px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* SSO Button */
+    .sso-section {
+        margin-bottom: 32px;
+    }
+
+    .btn-sso {
+        width: 100%;
+        padding: 16px 24px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-decoration: none;
+    }
+
+    .btn-sso:hover {
+        background: #1442b8;
+        transform: translateY(-1px);
+        color: white;
+    }
+
+    .btn-sso:active {
+        transform: translateY(0);
+    }
+
+    /* Divider */
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 32px 0;
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .divider span {
+        padding: 0 16px;
+    }
+
+    /* Form */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.2s ease;
+        background: var(--surface);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+    }
+
+    .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    .form-error {
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--error);
+    }
+
+    .alert-error {
+        padding: 14px 16px;
+        background: #fee2e2;
+        border: 1px solid var(--error);
+        border-radius: 10px;
+        color: var(--error);
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* Form Options */
+    .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 20px 0 24px;
+    }
+
+    .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .checkbox-wrapper input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .checkbox-wrapper label {
+        font-size: 14px;
+        color: var(--text);
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .link {
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: opacity 0.2s;
+    }
+
+    .link:hover {
+        opacity: 0.8;
+    }
+
+    /* Submit Button */
+    .btn-submit {
+        width: 100%;
+        padding: 16px 24px;
+        background: var(--text);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-submit:hover {
+        background: #111827;
+        transform: translateY(-1px);
+    }
+
+    .btn-submit:active {
+        transform: translateY(0);
+    }
+
+    /* Footer */
+    .auth-footer {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .auth-footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+        .auth-box {
+            padding: 40px 30px;
+        }
+
+        .auth-title {
+            font-size: 24px;
+        }
+
+        .form-options {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-box">
+        <!-- Header -->
+        <div class="auth-header">
+            <div class="auth-logo">
+                <img src="{% static 'img/logo.png' %}" alt="Kolokwa Connect Logo" style="width: 48px; height: 48px; object-fit: contain; display: block; margin: 0 auto;">
+            </div>
+            <h1 class="auth-title">Welcome back</h1>
+            <p class="auth-subtitle">Sign in to your Kolokwa Connect account</p>
+        </div>
+
+        <!-- SSO Login -->
+        <div class="sso-section">
+            <a href="{% url 'workos-login' %}?next={{ request.GET.next|default:'/users/profile/' }}" class="btn-sso">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M10 6V10L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                Sign in with SSO
+            </a>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider">
+            <span>or</span>
+        </div>
+
+        <!-- Login Form -->
+        <form method="POST" action="{% url 'account_login' %}">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {{ form.non_field_errors|first }}
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="id_login" class="form-label">Email or Username</label>
+                {{ form.login|add_class:"form-control" }}
+                {% if form.login.errors %}
+                    <div class="form-error">{{ form.login.errors|first }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_password" class="form-label">Password</label>
+                {{ form.password|add_class:"form-control" }}
+                {% if form.password.errors %}
+                    <div class="form-error">{{ form.password.errors|first }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-options">
+                <div class="checkbox-wrapper">
+                    {{ form.remember }}
+                    <label for="id_remember">Remember me</label>
+                </div>
+                <a href="{% url 'account_reset_password' %}" class="link">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn-submit">Sign In</button>
+        </form>
+
+        <!-- Footer -->
+        <div class="auth-footer">
+            Don't have an account? <a href="{% url 'account_signup' %}">Sign up</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,1143 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ entry.koloqua_text }} - Kolokwa Connect Dictionary{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #1a56db;
+        --secondary-color: #ff6b35;
+        --accent-color: #ffd23f;
+        --text-dark: #1f2937;
+        --text-light: #6b7280;
+        --bg-light: #f9fafb;
+        --border-light: #e5e7eb;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+    }
+
+    /* Hero Section */
+    .entry-hero {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        padding: 80px 0 120px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: -80px;
+    }
+
+    .hero-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .entry-hero .container {
+        position: relative;
+        z-index: 2;
+    }
+
+    .hero-word {
+        font-size: 4rem;
+        font-weight: 800;
+        color: white;
+        margin-bottom: 20px;
+        animation: fadeInUp 0.8s ease-out;
+    }
+
+    .hero-breadcrumb {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+        animation: fadeInUp 0.8s ease-out 0.2s backwards;
+    }
+
+    .hero-breadcrumb a {
+        color: white;
+        text-decoration: none;
+        transition: opacity 0.3s;
+    }
+
+    .hero-breadcrumb a:hover {
+        opacity: 0.8;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Main Card */
+    .entry-card {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+        position: relative;
+        z-index: 10;
+    }
+
+    .entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        padding-bottom: 25px;
+        border-bottom: 2px solid var(--border-light);
+    }
+
+    .entry-title-section h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 10px;
+    }
+
+    .pronunciation-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        color: var(--text-light);
+        font-size: 1.1rem;
+    }
+
+    .play-audio-btn {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .play-audio-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .badge-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .custom-badge {
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .badge-type {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+    }
+
+    .badge-verified {
+        background: var(--success-color);
+        color: white;
+    }
+
+    /* Section Styles */
+    .content-section {
+        margin-bottom: 35px;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-title i {
+        font-size: 1.1rem;
+    }
+
+    .translation-text {
+        font-size: 1.3rem;
+        color: var(--text-dark);
+        font-weight: 500;
+        line-height: 1.6;
+    }
+
+    .literal-translation {
+        background: var(--bg-light);
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-top: 15px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .example-box {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%);
+        padding: 25px;
+        border-radius: 12px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .example-box p {
+        margin-bottom: 12px;
+        font-size: 1.05rem;
+    }
+
+    .example-box p:last-child {
+        margin-bottom: 0;
+    }
+
+    .cultural-note {
+        background: #dbeafe;
+        border-left: 4px solid #3b82f6;
+        padding: 20px;
+        border-radius: 12px;
+        color: #1e40af;
+    }
+
+    .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .tag-item {
+        background: var(--bg-light);
+        color: var(--text-dark);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 2px solid var(--border-light);
+        transition: all 0.3s;
+    }
+
+    .tag-item:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .category-badge {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    /* Vote Section */
+    .vote-section {
+        background: var(--bg-light);
+        padding: 30px;
+        border-radius: 16px;
+        margin-top: 30px;
+    }
+
+    .vote-buttons {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .vote-btn {
+        padding: 12px 25px;
+        border-radius: 10px;
+        font-weight: 600;
+        border: 2px solid;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        background: white;
+    }
+
+    .vote-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .vote-btn-up {
+        border-color: var(--success-color);
+        color: var(--success-color);
+    }
+
+    .vote-btn-up:hover:not(:disabled), .vote-btn-up.active {
+        background: var(--success-color);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .vote-btn-down {
+        border-color: var(--danger-color);
+        color: var(--danger-color);
+    }
+
+    .vote-btn-down:hover:not(:disabled), .vote-btn-down.active {
+        background: var(--danger-color);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .share-btn {
+        background: white;
+        border-color: var(--border-light);
+        color: var(--text-dark);
+        padding: 12px 25px;
+        border-radius: 10px;
+        font-weight: 600;
+        border: 2px solid;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+    }
+
+    .share-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    /* Sidebar Cards */
+    .sidebar-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
+        transition: all 0.3s;
+    }
+
+    .sidebar-card:hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .sidebar-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .contributor-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 4px solid var(--border-light);
+        margin: 0 auto 15px;
+        display: block;
+        object-fit: cover;
+    }
+
+    .contributor-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        text-decoration: none;
+        display: block;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    .contributor-name:hover {
+        text-decoration: underline;
+    }
+
+    .contributor-level {
+        text-align: center;
+        color: var(--text-light);
+        margin-bottom: 10px;
+    }
+
+    .contributor-meta {
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-light);
+        padding-top: 15px;
+        border-top: 2px solid var(--border-light);
+    }
+
+    /* Verification Section */
+    .verification-form {
+        background: var(--bg-light);
+        padding: 25px;
+        border-radius: 12px;
+    }
+
+    .radio-option {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        border: 2px solid var(--border-light);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .radio-option:hover {
+        border-color: var(--primary-color);
+    }
+
+    .radio-option input[type="radio"] {
+        margin-right: 10px;
+    }
+
+    .radio-option label {
+        cursor: pointer;
+        margin-bottom: 0;
+        font-weight: 500;
+    }
+
+    /* Related Entries */
+    .related-item {
+        padding: 15px;
+        background: var(--bg-light);
+        border-radius: 10px;
+        margin-bottom: 12px;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: block;
+        border: 2px solid transparent;
+    }
+
+    .related-item:hover {
+        background: white;
+        border-color: var(--primary-color);
+        transform: translateX(5px);
+        text-decoration: none;
+    }
+
+    .related-word {
+        font-weight: 600;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+        margin-bottom: 5px;
+    }
+
+    .related-translation {
+        color: var(--text-light);
+        font-size: 0.9rem;
+    }
+
+    /* Quick Actions */
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #1a56db 100%);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        width: 100%;
+        margin-bottom: 12px;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-decoration: none;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+
+    .action-btn-outline {
+        background: white;
+        color: var(--primary-color);
+        border: 2px solid var(--primary-color);
+    }
+
+    .action-btn-outline:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .action-btn-warning {
+        background: var(--warning-color);
+    }
+
+    .action-btn-warning:hover {
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Verifications List */
+    .verification-item {
+        background: var(--bg-light);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        border-left: 4px solid;
+    }
+
+    .verification-item.accurate {
+        border-left-color: var(--success-color);
+    }
+
+    .verification-item.needs_revision {
+        border-left-color: var(--warning-color);
+    }
+
+    .verification-item.incorrect {
+        border-left-color: var(--danger-color);
+    }
+
+    .verification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .verifier-name {
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .verification-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: white;
+    }
+
+    .badge-accurate {
+        background: var(--success-color);
+    }
+
+    .badge-needs-revision {
+        background: var(--warning-color);
+    }
+
+    .badge-incorrect {
+        background: var(--danger-color);
+    }
+
+    /* Toast */
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: white;
+        padding: 20px 25px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        min-width: 300px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .toast-success {
+        border-left: 4px solid var(--success-color);
+    }
+
+    .toast-error {
+        border-left: 4px solid var(--danger-color);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .hero-word {
+            font-size: 2.5rem;
+        }
+
+        .entry-card {
+            padding: 25px;
+        }
+
+        .entry-header {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .badge-group {
+            align-items: flex-start;
+        }
+
+        .vote-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .vote-btn, .share-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="entry-hero">
+    <div class="hero-pattern"></div>
+    <div class="container">
+        <div class="text-center">
+            <h1 class="hero-word">{{ entry.koloqua_text }}</h1>
+            <div class="hero-breadcrumb">
+                <a href="{% url 'home' %}">Home</a>
+                <i class="fa fa-angle-double-right"></i>
+                <a href="{% url 'dictionary:entry-list' %}">Dictionary</a>
+                <i class="fa fa-angle-double-right"></i>
+                <span>{{ entry.koloqua_text }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="container" style="padding: 40px 0 80px;">
+    <div class="row">
+        <!-- Main Column -->
+        <div class="col-lg-8">
+            <!-- Main Entry Card -->
+            <div class="entry-card">
+                <!-- Entry Header -->
+                <div class="entry-header">
+                    <div class="entry-title-section">
+                        <h2>{{ entry.koloqua_text }}</h2>
+                        {% if entry.pronunciation_guide %}
+                        <div class="pronunciation-section">
+                            <i class="fa fa-volume-up"></i>
+                            <span>[{{ entry.pronunciation_guide }}]</span>
+                            {% if entry.audio_pronunciation %}
+                            <button class="play-audio-btn" onclick="playAudio()">
+                                <i class="fa fa-play"></i>
+                                Listen
+                            </button>
+                            <audio id="pronunciation-audio" src="{{ entry.audio_pronunciation.url }}"></audio>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="badge-group">
+                        <span class="custom-badge badge-type">{{ entry.get_entry_type_display }}</span>
+                        {% if entry.status == 'verified' %}
+                        <span class="custom-badge badge-verified">
+                            <i class="fa fa-check"></i> Verified
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Translation Section -->
+                <div class="content-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-language"></i>
+                        English Translation
+                    </h5>
+                    <p class="translation-text">{{ entry.english_translation }}</p>
+                    
+                    {% if entry.literal_translation %}
+                    <div class="literal-translation">
+                        <strong>Literal Translation:</strong>
+                        <p style="margin-top: 8px; margin-bottom: 0; font-style: italic;">{{ entry.literal_translation }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Context & Usage -->
+                <div class="content-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-comment-dots"></i>
+                        Context & Usage
+                    </h5>
+                    <p style="color: var(--text-dark); line-height: 1.6;">{{ entry.context_explanation }}</p>
+                </div>
+
+                <!-- Example -->
+                {% if entry.example_sentence_koloqua %}
+                <div class="content-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-quote-left"></i>
+                        Example
+                    </h5>
+                    <div class="example-box">
+                        <p><strong>Kolokwa:</strong> "{{ entry.example_sentence_koloqua }}"</p>
+                        <p><strong>English:</strong> "{{ entry.example_sentence_english }}"</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Cultural Notes -->
+                {% if entry.cultural_notes %}
+                <div class="content-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Cultural Notes
+                    </h5>
+                    <div class="cultural-note">
+                        <i class="fa fa-info-circle"></i> {{ entry.cultural_notes }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Categories & Tags -->
+                <div class="content-section">
+                    {% if entry.categories.all %}
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: var(--text-dark); margin-bottom: 10px; display: block;">Categories:</strong>
+                        <div class="tags-container">
+                            {% for category in entry.categories.all %}
+                            <span class="tag-item category-badge">{{ category.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if entry.tags %}
+                    <div>
+                        <strong style="color: var(--text-dark); margin-bottom: 10px; display: block;">Tags:</strong>
+                        <div class="tags-container">
+                            {% for tag in entry.tags %}
+                            <span class="tag-item">#{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Region -->
+                {% if entry.region_specific %}
+                <div class="content-section">
+                    <p style="color: var(--text-dark);">
+                        <i class="fa fa-map-marker-alt" style="color: var(--primary-color);"></i> 
+                        <strong>Region:</strong> {{ entry.region_specific }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Vote Section -->
+                <div class="vote-section">
+                    <h5 style="margin-bottom: 10px; color: var(--text-dark); font-weight: 600;">
+                        <i class="fas fa-poll"></i> Rate This Entry
+                    </h5>
+                    <p style="color: var(--text-light); margin-bottom: 20px; font-size: 0.95rem;">
+                        Help the community by voting on the accuracy of this translation
+                    </p>
+                    
+                    <div class="vote-buttons">
+                        {% if user.is_authenticated %}
+                            {% if user_vote %}
+                                <!-- User has already voted - show their vote -->
+                                <div style="background: white; padding: 20px; border-radius: 12px; width: 100%; border: 2px solid var(--border-light);">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            {% if user_vote == 1 %}
+                                                <i class="fa fa-thumbs-up" style="color: var(--success-color); font-size: 1.5rem;"></i>
+                                                <span style="color: var(--text-dark); font-weight: 600;">You upvoted this entry</span>
+                                            {% else %}
+                                                <i class="fa fa-thumbs-down" style="color: var(--danger-color); font-size: 1.5rem;"></i>
+                                                <span style="color: var(--text-dark); font-weight: 600;">You downvoted this entry</span>
+                                            {% endif %}
+                                        </div>
+                                        <span style="color: var(--text-light); font-size: 0.9rem;">
+                                            <i class="fa fa-users"></i> 
+                                            <span id="upvote-count">{{ entry.upvotes }}</span> up • <span id="downvote-count">{{ entry.downvotes }}</span> down
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button id="upvote-btn" 
+                                                class="vote-btn vote-btn-up {% if user_vote == 1 %}active{% endif %}" 
+                                                onclick="vote({{ entry.id }}, 1)"
+                                                style="flex: 1;">
+                                            <i class="fa fa-thumbs-up"></i>
+                                            Upvote
+                                        </button>
+                                        <button id="downvote-btn" 
+                                                class="vote-btn vote-btn-down {% if user_vote == -1 %}active{% endif %}" 
+                                                onclick="vote({{ entry.id }}, -1)"
+                                                style="flex: 1;">
+                                            <i class="fa fa-thumbs-down"></i>
+                                            Downvote
+                                        </button>
+                                    </div>
+                                    <p style="text-align: center; margin-top: 12px; margin-bottom: 0; color: var(--text-light); font-size: 0.85rem;">
+                                        <i class="fa fa-info-circle"></i> Click your vote again to remove it, or click the other to change
+                                    </p>
+                                </div>
+                            {% else %}
+                                <!-- User hasn't voted yet -->
+                                <div style="width: 100%;">
+                                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                        <button id="upvote-btn" 
+                                                class="vote-btn vote-btn-up" 
+                                                onclick="vote({{ entry.id }}, 1)"
+                                                style="flex: 1;">
+                                            <i class="fa fa-thumbs-up"></i>
+                                            Upvote
+                                        </button>
+                                        <button id="downvote-btn" 
+                                                class="vote-btn vote-btn-down" 
+                                                onclick="vote({{ entry.id }}, -1)"
+                                                style="flex: 1;">
+                                            <i class="fa fa-thumbs-down"></i>
+                                            Downvote
+                                        </button>
+                                    </div>
+                                    <div style="text-align: center; color: var(--text-light); font-size: 0.9rem;">
+                                        <i class="fa fa-users"></i> 
+                                        <span id="upvote-count">{{ entry.upvotes }}</span> upvotes • 
+                                        <span id="downvote-count">{{ entry.downvotes }}</span> downvotes
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <!-- Not authenticated -->
+                            <div style="background: white; padding: 25px; border-radius: 12px; text-align: center; width: 100%; border: 2px solid var(--border-light);">
+                                <div style="margin-bottom: 15px;">
+                                    <i class="fa fa-users" style="font-size: 2rem; color: var(--primary-color);"></i>
+                                </div>
+                                <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 15px;">
+                                    <span style="color: var(--success-color); font-weight: 600; font-size: 1.1rem;">
+                                        <i class="fa fa-thumbs-up"></i> {{ entry.upvotes }}
+                                    </span>
+                                    <span style="color: var(--danger-color); font-weight: 600; font-size: 1.1rem;">
+                                        <i class="fa fa-thumbs-down"></i> {{ entry.downvotes }}
+                                    </span>
+                                </div>
+                                <p style="margin-bottom: 15px; color: var(--text-dark);">
+                                    Sign in to vote on this entry
+                                </p>
+                                <a href="{% url 'account_login' %}?next={{ request.path }}" 
+                                   class="action-btn" 
+                                   style="display: inline-flex; width: auto;">
+                                    <i class="fa fa-sign-in-alt"></i>
+                                    Sign In to Vote
+                                </a>
+                            </div>
+                        {% endif %}
+                        
+                        <button class="share-btn" onclick="shareEntry()">
+                            <i class="fa fa-share-alt"></i>
+                            Share Entry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Section -->
+            {% if user.is_authenticated and user != entry.contributor %}
+            <div class="entry-card">
+                <h5 class="section-title">
+                    <i class="fas fa-check-circle"></i>
+                    Verify This Entry
+                </h5>
+                <p style="color: var(--text-light); margin-bottom: 25px;">Help improve the dictionary by verifying this entry's accuracy</p>
+                <form method="post" action="{% url 'dictionary:entry-verify' entry.id %}" class="verification-form">
+                    {% csrf_token %}
+                    <div class="radio-option">
+                        <input type="radio" id="accurate" name="verification_type" value="accurate">
+                        <label for="accurate">
+                            <i class="fa fa-check" style="color: var(--success-color);"></i> Accurate
+                        </label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="needs_revision" name="verification_type" value="needs_revision">
+                        <label for="needs_revision">
+                            <i class="fa fa-edit" style="color: var(--warning-color);"></i> Needs Revision
+                        </label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="incorrect" name="verification_type" value="incorrect">
+                        <label for="incorrect">
+                            <i class="fa fa-times" style="color: var(--danger-color);"></i> Incorrect
+                        </label>
+                    </div>
+                    <textarea name="comments" class="form-control" rows="3" placeholder="Additional comments (optional)" style="margin-top: 15px; border-radius: 10px; border: 2px solid var(--border-light);"></textarea>
+                    <button type="submit" class="action-btn" style="margin-top: 15px;">
+                        <i class="fa fa-check"></i>
+                        Submit Verification
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Verifications List -->
+            {% if verifications %}
+            <div class="entry-card">
+                <h5 class="section-title">
+                    <i class="fas fa-users"></i>
+                    Community Verifications ({{ entry.verification_count }})
+                </h5>
+                {% for verification in verifications %}
+                <div class="verification-item {{ verification.verification_type }}">
+                    <div class="verification-header">
+                        <div>
+                            <span class="verifier-name">{{ verification.verifier.username }}</span>
+                            <span class="verification-badge badge-{{ verification.verification_type|cut:"_" }}">
+                                {{ verification.get_verification_type_display }}
+                            </span>
+                        </div>
+                        <small style="color: var(--text-light);">{{ verification.created_at|timesince }} ago</small>
+                    </div>
+                    {% if verification.comments %}
+                    <p style="margin: 0; color: var(--text-light);">{{ verification.comments }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Contributor Info -->
+            <div class="sidebar-card">
+                <h5 class="sidebar-title">Contributed By</h5>
+                {% if entry.contributor.profile_picture %}
+                    <img src="{{ entry.contributor.profile_picture.url }}" 
+                         alt="{{ entry.contributor.username }}" 
+                         class="contributor-avatar">
+                {% else %}
+                    <img src="https://ui-avatars.com/api/?name={{ entry.contributor.username|urlencode }}&background=random" 
+                         alt="{{ entry.contributor.username }}" 
+                         class="contributor-avatar">
+                {% endif %}
+                <a href="{% url 'users:user-profile' entry.contributor.username %}" class="contributor-name">
+                    {{ entry.contributor.username }}
+                </a>
+                <p class="contributor-level">Level {{ entry.contributor.level }}</p>
+                <div class="contributor-meta">
+                    <div style="margin-bottom: 8px;">
+                        <i class="fa fa-calendar"></i> Contributed {{ entry.created_at|date:"F j, Y" }}
+                    </div>
+                    {% if entry.verified_at %}
+                    <div style="color: var(--success-color);">
+                        <i class="fa fa-check-circle"></i> Verified {{ entry.verified_at|date:"F j, Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Related Entries -->
+            {% if related_entries %}
+            <div class="sidebar-card">
+                <h5 class="sidebar-title">Related Entries</h5>
+                {% for related_entry in related_entries %}
+                <a href="{% url 'dictionary:entry-detail' related_entry.id %}" class="related-item">
+                    <div class="related-word">{{ related_entry.koloqua_text }}</div>
+                    <div class="related-translation">{{ related_entry.english_translation }}</div>
+                </a>
+                {% empty %}
+                <p style="text-align: center; color: var(--text-light);">No related entries found.</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="sidebar-card">
+                <h5 class="sidebar-title">Quick Actions</h5>
+                <a href="{% url 'dictionary:entry-contribute' %}" class="action-btn">
+                    <i class="fa fa-plus"></i>
+                    Add New Entry
+                </a>
+                <a href="{% url 'dictionary:entry-list' %}" class="action-btn action-btn-outline">
+                    <i class="fa fa-book"></i>
+                    Browse Dictionary
+                </a>
+                {% if user == entry.contributor %}
+                <a href="{% url 'dictionary:entry-update' entry.id %}" class="action-btn action-btn-warning">
+                    <i class="fa fa-edit"></i>
+                    Edit This Entry
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Track current user vote
+let currentVote = {% if user_vote %}{{ user_vote }}{% else %}null{% endif %};
+
+function playAudio() {
+    document.getElementById('pronunciation-audio').play();
+}
+
+function vote(entryId, voteType) {
+    // Disable buttons during request to prevent double-clicking
+    const upBtn = document.getElementById('upvote-btn');
+    const downBtn = document.getElementById('downvote-btn');
+    upBtn.disabled = true;
+    downBtn.disabled = true;
+    
+    fetch(`/dictionary/entry/${entryId}/vote/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ vote_type: voteType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update vote counts
+            document.querySelectorAll('#upvote-count').forEach(el => el.textContent = data.upvotes);
+            document.querySelectorAll('#downvote-count').forEach(el => el.textContent = data.downvotes);
+            
+            // Update current vote based on server response
+            currentVote = data.user_vote;
+            
+            // Update button states
+            updateVoteButtons(currentVote);
+            
+            // Show feedback
+            showToast(data.message);
+        } else {
+            showToast('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to record vote', 'error');
+    })
+    .finally(() => {
+        // Re-enable buttons
+        upBtn.disabled = false;
+        downBtn.disabled = false;
+    });
+}
+
+function updateVoteButtons(voteType) {
+    const upBtn = document.getElementById('upvote-btn');
+    const downBtn = document.getElementById('downvote-btn');
+    
+    if (upBtn && downBtn) {
+        // Reset both buttons
+        upBtn.classList.remove('active');
+        downBtn.classList.remove('active');
+        
+        // Highlight active vote
+        if (voteType === 1) {
+            upBtn.classList.add('active');
+        } else if (voteType === -1) {
+            downBtn.classList.add('active');
+        }
+    }
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <i class="fa fa-${type === 'error' ? 'times-circle' : 'check-circle'}" 
+           style="font-size: 1.5rem; color: var(--${type === 'error' ? 'danger' : 'success'}-color);"></i>
+        <span style="color: var(--text-dark); font-weight: 500;">${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function shareEntry() {
+    const url = window.location.href;
+    const text = `Check out "${`{{ entry.koloqua_text }}`}" in the Kolokwa Dictionary: {{ entry.english_translation|truncatewords:10 }}`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Kolokwa Dictionary Entry',
+            text: text,
+            url: url
+        }).catch(err => {
+            // User cancelled share, not an error
+            if (err.name !== 'AbortError') {
+                console.log('Share failed:', err);
+                copyToClipboard(url);
+            }
+        });
+    } else {
+        copyToClipboard(url);
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Link copied to clipboard!');
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('Link copied to clipboard!');
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial button states if user has voted
+    if (currentVote !== null) {
+        updateVoteButtons(currentVote);
+    }
+    
+    // Add smooth scroll animations
+    const cards = document.querySelectorAll('.entry-card, .sidebar-card');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+        observer.observe(card);
+    });
+});
+</script>
+{% endblock %}

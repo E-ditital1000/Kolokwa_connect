@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Profile | Kolokwa Connect{% endblock %}
+
+{% block content %}
+<!-- Header Start -->
+<div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
+    <div class="container text-center py-5">
+        <h1 class="text-white display-1">Edit Profile</h1>
+        <div class="d-inline-flex text-white mb-5">
+            <p class="m-0 text-uppercase"><a class="text-white" href="{% url 'home' %}">Home</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase"><a class="text-white" href="{% url 'users:me-profile' %}">Profile</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase">Edit</p>
+        </div>
+    </div>
+</div>
+<!-- Header End -->
+
+<!-- Edit Profile Start -->
+<div class="container-fluid py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body p-5">
+                        <h3 class="mb-4">Update Your Profile</h3>
+                        
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            
+                            <!-- Profile Picture -->
+                            <div class="form-group text-center mb-4">
+                                <div class="mb-3">
+                                    {% if user.profile_picture %}
+                                        <img src="{{ user.profile_picture.url }}" alt="{{ user.username }}" 
+                                             class="rounded-circle" id="profile-preview"
+                                             style="width: 150px; height: 150px; object-fit: cover;">
+                                    {% else %}
+                                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" 
+                                             id="profile-placeholder"
+                                             style="width: 150px; height: 150px; font-size: 48px;">
+                                            {{ user.username|first|upper }}
+                                        </div>
+                                        <img src="#" alt="Preview" class="rounded-circle d-none" id="profile-preview"
+                                             style="width: 150px; height: 150px; object-fit: cover;">
+                                    {% endif %}
+                                </div>
+                                <label for="id_profile_picture" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa fa-camera mr-2"></i>Change Photo
+                                </label>
+                                <input type="file" id="id_profile_picture" name="profile_picture" 
+                                       class="d-none" accept="image/*" onchange="previewImage(this);">
+                                {% if form.profile_picture.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.profile_picture.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Personal Information -->
+                            <h5 class="mb-3 pb-2 border-bottom">Personal Information</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_first_name">First Name</label>
+                                        <input type="text" class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" 
+                                               id="id_first_name" name="first_name" 
+                                               value="{{ form.first_name.value|default:user.first_name }}"
+                                               placeholder="Enter your first name">
+                                        {% if form.first_name.errors %}
+                                            <div class="invalid-feedback">
+                                                {{ form.first_name.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_last_name">Last Name</label>
+                                        <input type="text" class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" 
+                                               id="id_last_name" name="last_name" 
+                                               value="{{ form.last_name.value|default:user.last_name }}"
+                                               placeholder="Enter your last name">
+                                        {% if form.last_name.errors %}
+                                            <div class="invalid-feedback">
+                                                {{ form.last_name.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="id_username">Username <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">@</span>
+                                    </div>
+                                    <input type="text" class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                                           id="id_username" name="username" 
+                                           value="{{ form.username.value|default:user.username }}"
+                                           placeholder="Choose a username" required>
+                                    {% if form.username.errors %}
+                                        <div class="invalid-feedback">
+                                            {{ form.username.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="id_bio">Bio</label>
+                                <textarea class="form-control {% if form.bio.errors %}is-invalid{% endif %}" 
+                                          id="id_bio" name="bio" rows="4" 
+                                          placeholder="Tell us about yourself...">{{ form.bio.value|default:user.bio }}</textarea>
+                                <small class="form-text text-muted">
+                                    Share a bit about your interest in Kolokwa and language preservation.
+                                </small>
+                                {% if form.bio.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.bio.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Contact Information -->
+                            <h5 class="mb-3 pb-2 border-bottom mt-4">Contact Information</h5>
+                            
+                            <div class="form-group">
+                                <label for="id_email">Email Address <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                                       id="id_email" name="email" 
+                                       value="{{ form.email.value|default:user.email }}"
+                                       placeholder="your@email.com" required>
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.email.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="id_phone_number">Phone Number</label>
+                                <input type="tel" class="form-control {% if form.phone_number.errors %}is-invalid{% endif %}" 
+                                       id="id_phone_number" name="phone_number" 
+                                       value="{{ form.phone_number.value|default:user.phone_number }}"
+                                       placeholder="+231 88 555 0000">
+                                {% if form.phone_number.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.phone_number.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Privacy Settings -->
+                            <h5 class="mb-3 pb-2 border-bottom mt-4">Privacy Settings</h5>
+                            
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="show_email" name="show_email"
+                                           {% if user.show_email %}checked{% endif %}>
+                                    <label class="custom-control-label" for="show_email">
+                                        Show email address on public profile
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="show_contributions" name="show_contributions"
+                                           {% if user.show_contributions %}checked{% endif %}>
+                                    <label class="custom-control-label" for="show_contributions">
+                                        Show my contributions publicly
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Form Actions -->
+                            <div class="form-group mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary mr-2">
+                                    <i class="fa fa-save mr-2"></i>Save Changes
+                                </button>
+                                <a href="{% url 'users:me-profile' %}" class="btn btn-outline-secondary">
+                                    Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Change Password Card -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-body">
+                        <h5 class="mb-3">Security</h5>
+                        <p class="text-muted">Keep your account secure by using a strong password.</p>
+                        <a href="{% url 'account_change_password' %}" class="btn btn-outline-primary">
+                            <i class="fa fa-key mr-2"></i>Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Edit Profile End -->
+
+<script>
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+            document.getElementById('profile-preview').classList.remove('d-none');
+            var placeholder = document.getElementById('profile-placeholder');
+            if (placeholder) {
+                placeholder.classList.add('d-none');
+            }
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

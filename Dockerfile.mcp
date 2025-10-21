@@ -1,0 +1,127 @@
+# Dockerfile.mcp - MCP Servers with Proper Module Resolution
+# Lightweight image for dictionary and translation MCP servers
+
+FROM python:3.10-slim AS builder
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install only MCP-required dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# ============================================================================
+# Runtime Stage
+# ============================================================================
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=Kolokwa_connect.settings
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/logs && \
+    chown -R appuser:appuser /app
+
+WORKDIR /app
+
+# ============================================================================
+# CRITICAL: Copy project structure correctly
+# Your structure appears to be:
+# /kolokwa_connect/
+#   ├── manage.py
+#   ├── Kolokwa_connect/
+#   ├── users/
+#   ├── dictionary/
+#   ├── gamification/
+#   ├── nl_interact/
+#   └── kolokwa/ (contains src/kolokwa_mcp/)
+# ============================================================================
+
+# Copy all Django apps and modules to /app (preserving structure)
+COPY --chown=appuser:appuser manage.py ./
+COPY --chown=appuser:appuser Kolokwa_connect/ ./Kolokwa_connect/
+COPY --chown=appuser:appuser users/ ./users/
+COPY --chown=appuser:appuser dictionary/ ./dictionary/
+COPY --chown=appuser:appuser gamification/ ./gamification/
+COPY --chown=appuser:appuser nl_interact/ ./nl_interact/
+COPY --chown=appuser:appuser kolokwa/ ./kolokwa/
+
+# Create __init__.py files to ensure packages are recognized
+RUN touch ./users/__init__.py && \
+    touch ./dictionary/__init__.py && \
+    touch ./gamification/__init__.py && \
+    touch ./nl_interact/__init__.py && \
+    touch ./Kolokwa_connect/__init__.py
+
+# PYTHONPATH must be set to /app (project root where manage.py is)
+# This allows imports like "from users.models import User"
+ENV PYTHONPATH="/app"
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Create startup script with proper initialization order
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "===================================="\n\
+echo "Starting Kolokwa MCP Server"\n\
+echo "===================================="\n\
+echo "Current directory: $(pwd)"\n\
+echo "Python path: $(which python)"\n\
+echo "PYTHONPATH: $PYTHONPATH"\n\
+echo ""\n\
+\n\
+# Run migrations FIRST (required before loading models)\n\
+echo "▶ Running database migrations..."\n\
+python manage.py migrate --noinput 2>&1 || {\n\
+    echo "⚠ Migration warning (may be expected on first run)"\n\
+}\n\
+\n\
+# Create cache table if using database cache\n\
+echo "▶ Setting up cache..."\n\
+python manage.py createcachetable 2>/dev/null || {\n\
+    echo "✓ Cache table ready"\n\
+}\n\
+\n\
+# NOW verify Django setup (after migrations)\n\
+echo "▶ Verifying Django setup..."\n\
+python -c "import django; django.setup(); print(\"✓ Django loaded\")" || {\n\
+    echo "✗ Django setup failed"\n\
+    exit 1\n\
+}\n\
+\n\
+echo ""\n\
+echo "✓ All initialization complete"\n\
+echo "▶ Starting MCP server..."\n\
+echo "===================================="\n\
+echo ""\n\
+\n\
+# Start the MCP server\n\
+exec python /app/kolokwa/src/kolokwa_mcp/run_dictionary_server.py\n' > /app/start-mcp.sh && \
+    chmod +x /app/start-mcp.sh
+
+CMD ["/app/start-mcp.sh"]

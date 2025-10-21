@@ -1,0 +1,340 @@
+services:
+  # ============================================================================
+  # PostgreSQL Database (Shared by all services)
+  # ============================================================================
+  - type: pserv
+    name: kolokwa-postgres
+    env: docker
+    plan: starter
+    region: oregon
+    image:
+      url: postgres:15-alpine
+    envVars:
+      - key: POSTGRES_DB
+        value: koloqua_connect
+      - key: POSTGRES_USER
+        value: kolokwa
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+
+  # ============================================================================
+  # Redis Cache (Shared by all services)
+  # ============================================================================
+  - type: pserv
+    name: kolokwa-redis
+    env: docker
+    plan: starter
+    region: oregon
+    image:
+      url: redis:7-alpine
+    envVars:
+      - key: REDIS_PASSWORD
+        generateValue: true
+    disk:
+      name: redis-data
+      mountPath: /data
+      sizeGB: 1
+
+  # ============================================================================
+  # Main Django Web Application
+  # ============================================================================
+  - type: web
+    name: kolokwa-web
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile.web
+    dockerCommand: gunicorn Kolokwa_connect.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    envVars:
+      # Django Core
+      - key: DJANGO_SETTINGS_MODULE
+        value: Kolokwa_connect.settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      
+      # Database
+      - key: DATABASE_ENGINE
+        value: django.db.backends.postgresql
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: kolokwa-postgres
+          property: database
+      - key: DATABASE_USER
+        fromDatabase:
+          name: kolokwa-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: kolokwa-postgres
+          property: password
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: kolokwa-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: kolokwa-postgres
+          property: port
+      
+      # Redis
+      - key: REDIS_URL
+        fromService:
+          name: kolokwa-redis
+          type: pserv
+          envVarKey: REDIS_URL
+      
+      # Static/Media Files
+      - key: STATIC_URL
+        value: /static/
+      - key: MEDIA_URL
+        value: /media/
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+    
+    healthCheckPath: /health
+    
+  # ============================================================================
+  # Dictionary MCP Server (HTTP Transport for Render)
+  # ============================================================================
+  - type: web
+    name: kolokwa-dictionary-mcp
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile.mcp
+    dockerCommand: python /app/kolokwa/src/kolokwa_mcp/run_dictionary_server.py
+    envVars:
+      # Django (for models access)
+      - key: DJANGO_SETTINGS_MODULE
+        value: Kolokwa_connect.settings
+      - key: SECRET_KEY
+        fromService:
+          name: kolokwa-web
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      
+      # Database (read from main DB)
+      - key: DATABASE_ENGINE
+        value: django.db.backends.postgresql
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: kolokwa-postgres
+          property: database
+      - key: DATABASE_USER
+        fromDatabase:
+          name: kolokwa-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: kolokwa-postgres
+          property: password
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: kolokwa-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: kolokwa-postgres
+          property: port
+      
+      # Redis
+      - key: REDIS_URL
+        fromService:
+          name: kolokwa-redis
+          type: pserv
+          envVarKey: REDIS_URL
+      
+      # MCP Configuration - HTTP Transport
+      - key: ENVIRONMENT
+        value: production
+      - key: MCP_TRANSPORT
+        value: http
+      - key: MCP_SERVER_NAME
+        value: kolokwa-dictionary
+      - key: MCP_HTTP_HOST
+        value: 0.0.0.0
+      - key: MCP_HTTP_PORT
+        value: "8000"
+      
+      # WorkOS Authentication
+      - key: MCP_AUTH_ENABLED
+        value: "True"
+      - key: WORKOS_API_KEY
+        sync: false
+      - key: WORKOS_CLIENT_ID
+        sync: false
+      - key: WORKOS_ORGANIZATION_ID
+        sync: false
+      
+      # OAuth Configuration
+      - key: OAUTH_AUTHORIZE_URL
+        value: https://api.workos.com/sso/authorize
+      - key: OAUTH_TOKEN_URL
+        value: https://api.workos.com/sso/token
+      - key: OAUTH_SCOPES
+        value: "openid profile email"
+      
+      # Performance
+      - key: CACHE_ENABLED
+        value: "True"
+      - key: CACHE_TTL
+        value: "300"
+      - key: MAX_SEARCH_RESULTS
+        value: "50"
+      - key: REQUEST_TIMEOUT
+        value: "30"
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_ENABLED
+        value: "True"
+      - key: RATE_LIMIT_REQUESTS
+        value: "100"
+      - key: RATE_LIMIT_WINDOW
+        value: "60"
+      
+      # CORS
+      - key: CORS_ENABLED
+        value: "True"
+      - key: CORS_ORIGINS
+        value: "https://kolokwa-web.onrender.com,https://kolokwa-dictionary-mcp.onrender.com,*"
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+    
+    healthCheckPath: /health
+    
+  # ============================================================================
+  # Translation MCP Server (HTTP Transport for Render)
+  # ============================================================================
+  - type: web
+    name: kolokwa-translation-mcp
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile.mcp
+    dockerCommand: python /app/kolokwa/src/kolokwa_mcp/run_translator_server.py
+    envVars:
+      # Django
+      - key: DJANGO_SETTINGS_MODULE
+        value: Kolokwa_connect.settings
+      - key: SECRET_KEY
+        fromService:
+          name: kolokwa-web
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      
+      # Database
+      - key: DATABASE_ENGINE
+        value: django.db.backends.postgresql
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: kolokwa-postgres
+          property: database
+      - key: DATABASE_USER
+        fromDatabase:
+          name: kolokwa-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: kolokwa-postgres
+          property: password
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: kolokwa-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: kolokwa-postgres
+          property: port
+      
+      # Redis
+      - key: REDIS_URL
+        fromService:
+          name: kolokwa-redis
+          type: pserv
+          envVarKey: REDIS_URL
+      
+      # MCP Configuration - HTTP Transport
+      - key: ENVIRONMENT
+        value: production
+      - key: MCP_TRANSPORT
+        value: http
+      - key: MCP_SERVER_NAME
+        value: kolokwa-translator
+      - key: MCP_HTTP_HOST
+        value: 0.0.0.0
+      - key: MCP_HTTP_PORT
+        value: "8000"
+      
+      # WorkOS Authentication
+      - key: MCP_AUTH_ENABLED
+        value: "True"
+      - key: WORKOS_API_KEY
+        sync: false
+      - key: WORKOS_CLIENT_ID
+        sync: false
+      - key: WORKOS_ORGANIZATION_ID
+        sync: false
+      
+      # OAuth Configuration
+      - key: OAUTH_AUTHORIZE_URL
+        value: https://api.workos.com/sso/authorize
+      - key: OAUTH_TOKEN_URL
+        value: https://api.workos.com/sso/token
+      - key: OAUTH_SCOPES
+        value: "openid profile email"
+      
+      # AI APIs
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      
+      # Performance
+      - key: CACHE_ENABLED
+        value: "True"
+      - key: CACHE_TTL
+        value: "300"
+      - key: REQUEST_TIMEOUT
+        value: "30"
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_ENABLED
+        value: "True"
+      - key: RATE_LIMIT_REQUESTS
+        value: "100"
+      - key: RATE_LIMIT_WINDOW
+        value: "60"
+      
+      # CORS
+      - key: CORS_ENABLED
+        value: "True"
+      - key: CORS_ORIGINS
+        value: "https://kolokwa-web.onrender.com,https://kolokwa-translation-mcp.onrender.com,*"
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+    
+    healthCheckPath: /health

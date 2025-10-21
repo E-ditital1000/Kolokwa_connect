@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+{% load form_tags %}
+
+
+{% block title %}{% trans "Sign Up" %} - Kolokwa Connect{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary: #1a56db;
+        --accent: #ff6b35;
+        --text: #1f2937;
+        --text-secondary: #6b7280;
+        --surface: #ffffff;
+        --background: #f9fafb;
+        --border: #e5e7eb;
+        --error: #ef4444;
+    }
+
+    body {
+        background: var(--background);
+    }
+
+    /* Main Container */
+    .auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
+
+    .auth-box {
+        background: var(--surface);
+        border-radius: 20px;
+        padding: 60px;
+        max-width: 480px;
+        width: 100%;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Header */
+    .auth-header {
+        text-align: center;
+        margin-bottom: 48px;
+    }
+
+    .auth-logo {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 24px;
+        background: linear-gradient(135deg, #667eea 0%, var(--primary) 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .auth-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 8px;
+        letter-spacing: -0.5px;
+    }
+
+    .auth-subtitle {
+        font-size: 15px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* SSO Button */
+    .sso-section {
+        margin-bottom: 32px;
+    }
+
+    .btn-sso {
+        width: 100%;
+        padding: 16px 24px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-decoration: none;
+    }
+
+    .btn-sso:hover {
+        background: #1442b8;
+        transform: translateY(-1px);
+        color: white;
+    }
+
+    .btn-sso:active {
+        transform: translateY(0);
+    }
+
+    /* Divider */
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 32px 0;
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .divider span {
+        padding: 0 16px;
+    }
+
+    /* Form */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.2s ease;
+        background: var(--surface);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+    }
+
+    .form-control::placeholder {
+        color: #9ca3af;
+    }
+
+    .form-hint {
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .form-error {
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--error);
+    }
+
+    .alert-error {
+        padding: 14px 16px;
+        background: #fee2e2;
+        border: 1px solid var(--error);
+        border-radius: 10px;
+        color: var(--error);
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* Submit Button */
+    .btn-submit {
+        width: 100%;
+        padding: 16px 24px;
+        background: var(--text);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-top: 8px;
+    }
+
+    .btn-submit:hover {
+        background: #111827;
+        transform: translateY(-1px);
+    }
+
+    .btn-submit:active {
+        transform: translateY(0);
+    }
+
+    /* Benefits */
+    .benefits {
+        margin-bottom: 32px;
+        padding: 20px;
+        background: var(--background);
+        border-radius: 12px;
+    }
+
+    .benefits-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 12px;
+    }
+
+    .benefit-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+
+    .benefit-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .benefit-icon {
+        width: 20px;
+        height: 20px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 10px;
+        flex-shrink: 0;
+    }
+
+    /* Footer */
+    .auth-footer {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .auth-footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+        .auth-box {
+            padding: 40px 30px;
+        }
+
+        .auth-title {
+            font-size: 24px;
+        }
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-box">
+        <!-- Header -->
+        <div class="auth-header">
+            <div class="auth-logo">
+                <img src="{% static 'img/logo.png' %}" alt="Kolokwa Connect Logo" style="width: 48px; height: 48px; object-fit: contain; display: block; margin: 0 auto;">
+            </div>
+            <h1 class="auth-title">Create account</h1>
+            <p class="auth-subtitle">Join the Kolokwa community</p>
+        </div>
+
+        <!-- Benefits -->
+        <div class="benefits">
+            <p class="benefits-title">What you'll get</p>
+            <div class="benefit-item">
+                <div class="benefit-icon">✓</div>
+                <span>Contribute to the Kolokwa dictionary</span>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✓</div>
+                <span>Connect with native speakers</span>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✓</div>
+                <span>Earn points and achievements</span>
+            </div>
+        </div>
+
+        <!-- SSO Signup -->
+        <div class="sso-section">
+            <a href="{% url 'workos-login' %}?next=/users/profile/" class="btn-sso">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M10 6V10L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                Sign up with SSO
+            </a>
+        </div>
+
+        <!-- Divider -->
+        <div class="divider">
+            <span>or</span>
+        </div>
+
+        <!-- Signup Form -->
+        <form method="post" action="{% url 'account_signup' %}">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {{ form.non_field_errors|first }}
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="id_email" class="form-label">Email</label>
+                {{ form.email|add_class:"form-control" }}
+                {% if form.email.help_text %}
+                    <div class="form-hint">{{ form.email.help_text }}</div>
+                {% endif %}
+                {% if form.email.errors %}
+                    <div class="form-error">{{ form.email.errors|first }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_username" class="form-label">Username</label>
+                {{ form.username|add_class:"form-control" }}
+                {% if form.username.help_text %}
+                    <div class="form-hint">{{ form.username.help_text }}</div>
+                {% endif %}
+                {% if form.username.errors %}
+                    <div class="form-error">{{ form.username.errors|first }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_password1" class="form-label">Password</label>
+                {{ form.password1|add_class:"form-control" }}
+                {% if form.password1.help_text %}
+                    <div class="form-hint">{{ form.password1.help_text }}</div>
+                {% endif %}
+                {% if form.password1.errors %}
+                    <div class="form-error">{{ form.password1.errors|first }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_password2" class="form-label">Confirm Password</label>
+                {{ form.password2|add_class:"form-control" }}
+                {% if form.password2.errors %}
+                    <div class="form-error">{{ form.password2.errors|first }}</div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn-submit">Create Account</button>
+        </form>
+
+        <!-- Footer -->
+        <div class="auth-footer">
+            Already have an account? <a href="{% url 'account_login' %}">Sign in</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,138 @@
+{
+    "name": "Kolokwa Connect - Liberian Language Dictionary",
+    "short_name": "Kolokwa",
+    "description": "The first comprehensive digital dictionary for Kolokwa - preserving Liberian linguistic heritage",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1a56db",
+    "theme_color": "#1a56db",
+    "orientation": "portrait-primary",
+    "categories": ["education", "reference", "utilities"],
+    "lang": "en-US",
+    "dir": "ltr",
+    "scope": "/",
+    "icons": [
+      {
+        "src": "/static/images/icons/icon-72x72.png",
+        "sizes": "72x72",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/static/images/icons/icon-96x96.png",
+        "sizes": "96x96",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/static/images/icons/icon-128x128.png",
+        "sizes": "128x128",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/static/images/icons/icon-144x144.png",
+        "sizes": "144x144",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/static/images/icons/icon-152x152.png",
+        "sizes": "152x152",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/static/images/icons/icon-192x192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "/static/images/icons/icon-384x384.png",
+        "sizes": "384x384",
+        "type": "image/png",
+        "purpose": "any"
+      },
+      {
+        "src": "/static/images/icons/icon-512x512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable"
+      }
+    ],
+    "screenshots": [
+      {
+        "src": "/static/images/screenshots/mobile-home.png",
+        "sizes": "540x720",
+        "type": "image/png",
+        "form_factor": "narrow",
+        "label": "Kolokwa Translator"
+      },
+      {
+        "src": "/static/images/screenshots/mobile-dictionary.png",
+        "sizes": "540x720",
+        "type": "image/png",
+        "form_factor": "narrow",
+        "label": "Dictionary Search"
+      },
+      {
+        "src": "/static/images/screenshots/desktop-home.png",
+        "sizes": "1280x720",
+        "type": "image/png",
+        "form_factor": "wide",
+        "label": "Desktop Experience"
+      }
+    ],
+    "shortcuts": [
+      {
+        "name": "Translate",
+        "short_name": "Translate",
+        "description": "Quick access to translator",
+        "url": "/?action=translate",
+        "icons": [
+          {
+            "src": "/static/images/icons/translate-96x96.png",
+            "sizes": "96x96"
+          }
+        ]
+      },
+      {
+        "name": "Search Dictionary",
+        "short_name": "Search",
+        "description": "Search the dictionary",
+        "url": "/dictionary/",
+        "icons": [
+          {
+            "src": "/static/images/icons/search-96x96.png",
+            "sizes": "96x96"
+          }
+        ]
+      },
+      {
+        "name": "Contribute",
+        "short_name": "Add Word",
+        "description": "Add a new word",
+        "url": "/dictionary/contribute/",
+        "icons": [
+          {
+            "src": "/static/images/icons/add-96x96.png",
+            "sizes": "96x96"
+          }
+        ]
+      }
+    ],
+    "share_target": {
+      "action": "/share/",
+      "method": "POST",
+      "enctype": "multipart/form-data",
+      "params": {
+        "title": "title",
+        "text": "text",
+        "url": "url"
+      }
+    },
+    "prefer_related_applications": false,
+    "related_applications": [],
+    "iarc_rating_id": ""
+  }

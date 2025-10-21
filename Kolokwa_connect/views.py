@@ -50,16 +50,33 @@ def about(request):
     """
     About page view with platform statistics.
     """
+    # Total words in dictionary (verified only)
     word_count = KoloquaEntry.objects.filter(status='verified').count()
+    
+    # Total registered users on platform
+    total_users = User.objects.filter(is_active=True).count()
+    
+    # Active contributors (users who have made contributions)
     contributor_count = User.objects.filter(is_active=True, contributions_count__gt=0).count()
+    
+    # Total translations found
     translation_count = TranslationHistory.objects.filter(found=True).count()
+    
+    # Entries with example sentences
     example_count = KoloquaEntry.objects.exclude(example_sentence_koloqua='').count()
+    
+    # Additional stats you might want
+    pending_entries = KoloquaEntry.objects.filter(status='pending').count()
+    total_entries = KoloquaEntry.objects.count()
 
     context = {
         'word_count': word_count,
-        'contributor_count': contributor_count,
+        'total_users': total_users,  # NEW: Total users
+        'contributor_count': contributor_count,  # Active contributors
         'translation_count': translation_count,
         'example_count': example_count,
+        'pending_entries': pending_entries,
+        'total_entries': total_entries,
     }
     return render(request, 'about.html', context)
 

@@ -6,7 +6,6 @@
 {% block content %}
 
 
-
 <!-- About Start -->
 <div class="container-fluid py-5">
     <div class="container py-5">
@@ -25,25 +24,25 @@
                 <div class="row pt-3 mx-0">
                     <div class="col-3 px-0">
                         <div class="bg-success text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">{{ word_count|default:"2543" }}</h1>
+                            <h1 class="text-white" data-toggle="counter-up">{{ word_count|default:"0" }}</h1>
                             <h6 class="text-uppercase text-white">Words<span class="d-block">Documented</span></h6>
                         </div>
                     </div>
                     <div class="col-3 px-0">
                         <div class="bg-primary text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">{{ contributor_count|default:"187" }}</h1>
-                            <h6 class="text-uppercase text-white">Active<span class="d-block">Contributors</span></h6>
+                            <h1 class="text-white" data-toggle="counter-up">{{ total_users|default:"0" }}</h1>
+                            <h6 class="text-uppercase text-white">Total<span class="d-block">Users</span></h6>
                         </div>
                     </div>
                     <div class="col-3 px-0">
                         <div class="bg-secondary text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">{{ translation_count|default:"3421" }}</h1>
-                            <h6 class="text-uppercase text-white">Translations<span class="d-block">Added</span></h6>
+                            <h1 class="text-white" data-toggle="counter-up">{{ contributor_count|default:"0" }}</h1>
+                            <h6 class="text-uppercase text-white">Active<span class="d-block">Contributors</span></h6>
                         </div>
                     </div>
                     <div class="col-3 px-0">
                         <div class="bg-warning text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">{{ example_count|default:"1893" }}</h1>
+                            <h1 class="text-white" data-toggle="counter-up">{{ example_count|default:"0" }}</h1>
                             <h6 class="text-uppercase text-white">Usage<span class="d-block">Examples</span></h6>
                         </div>
                     </div>
@@ -136,6 +135,33 @@
 </div>
 <!-- Features Grid End -->
 
+<!-- Statistics Banner -->
+<div class="container-fluid bg-primary py-5">
+    <div class="container py-5">
+        <div class="row text-center text-white">
+            <div class="col-md-3 mb-4 mb-md-0">
+                <i class="fa fa-3x fa-check-circle mb-3"></i>
+                <h2 class="font-weight-bold" data-toggle="counter-up">{{ word_count }}</h2>
+                <p class="mb-0">Verified Words</p>
+            </div>
+            <div class="col-md-3 mb-4 mb-md-0">
+                <i class="fa fa-3x fa-users mb-3"></i>
+                <h2 class="font-weight-bold" data-toggle="counter-up">{{ total_users }}</h2>
+                <p class="mb-0">Registered Users</p>
+            </div>
+            <div class="col-md-3 mb-4 mb-md-0">
+                <i class="fa fa-3x fa-user-check mb-3"></i>
+                <h2 class="font-weight-bold" data-toggle="counter-up">{{ contributor_count }}</h2>
+                <p class="mb-0">Active Contributors</p>
+            </div>
+            <div class="col-md-3">
+                <i class="fa fa-3x fa-clock mb-3"></i>
+                <h2 class="font-weight-bold" data-toggle="counter-up">{{ pending_entries|default:"0" }}</h2>
+                <p class="mb-0">Pending Review</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Contact Start -->
 <div class="container-fluid py-5">

@@ -50,7 +50,7 @@ jsonschema-path==0.3.4
 jsonschema-specifications==2025.9.1
 psycopg2-binary==2.9.10
 python-decouple>=3.8
-Pillow==10.3.0
+Pillow>=11.0.0
 whitenoise==6.6.0
 workos==5.31.2
 openai==2.6.0

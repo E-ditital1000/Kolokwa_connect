@@ -1,4 +1,3 @@
-# nl_interact/views.py
 from rest_framework import views, response, status
 from rest_framework.permissions import AllowAny
 from .serializers import NLQuerySerializer, NLResponseSerializer
@@ -22,27 +21,26 @@ class NLQueryView(views.APIView):
 
     # Common Liberian Kolokwa patterns (NOT Nigerian Pidgin)
     LIBERIAN_PATTERNS = {
-        r'\bna\b': 'not/don\'t',  # "I na know" = "I don't know"
-        r'\bba\b': 'friend/person',  # "my ba" = "my friend"
-        r'\bpekin\b': 'child/little one',  # "my pekin" = "my child/little one"
-        r'\bda\b': 'that/the',  # "da one" = "that one"
-        r'\boh+\b': '',  # Remove emphasis markers "ooo"
-        r'\bya+h?\b': '',  # Remove emphasis markers
+        r'\bna\b': 'not/don\'t',
+        r'\bba\b': 'friend/person',
+        r'\bpekin\b': 'child/little one',
+        r'\bda\b': 'that/the',
+        r'\boh+\b': '',
+        r'\bya+h?\b': '',
         r'\bsmall\s+small\b': 'little/small',
         r'\bfine\s+fine\b': 'very nice',
         r'\bplenty\b': 'many/much',
         r'\bself\b': 'even/also',
-        r'\bhow\s+you\s+say\b': 'what do you mean',  # Liberian: "how you say"
+        r'\bhow\s+you\s+say\b': 'what do you mean',
         r'\byou\s+say\b': 'what do you mean',
     }
 
-    # Common sentence starters in Liberian Kolokwa (avoiding Nigerian patterns)
     SENTENCE_STARTERS = [
-        r'^how\s+you\s+',  # "how you doing"
-        r'^you\s+say\s+',  # "you say what?"
-        r'^my\s+people\s+',  # "my people"
-        r'^my\s+pekin\s+',  # "my pekin"
-        r'^my\s+ba\s+',  # "my ba"
+        r'^how\s+you\s+',
+        r'^you\s+say\s+',
+        r'^my\s+people\s+',
+        r'^my\s+pekin\s+',
+        r'^my\s+ba\s+',
         r'^i\s+want\s+(to\s+)?know\s+',
         r'^tell\s+me\s+',
         r'^how\s+i\s+can\s+',
@@ -51,7 +49,8 @@ class NLQueryView(views.APIView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.client = OpenAI()
+        # Initialize OpenAI client with API key from settings
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
     def post(self, request, *args, **kwargs):
         serializer = NLQuerySerializer(data=request.data)
@@ -79,7 +78,7 @@ class NLQueryView(views.APIView):
             return response.Response(response_serializer.data, status=status.HTTP_200_OK)
             
         except Exception as e:
-            logger.error(f"Error processing NL query: {str(e)}")
+            logger.error(f"Error processing NL query: {str(e)}", exc_info=True)
             return response.Response(
                 {'error': 'An error occurred processing your query. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -88,17 +87,13 @@ class NLQueryView(views.APIView):
     def _normalize_liberian_input(self, query):
         """
         Normalize Liberian English/Koloqua patterns to standard English for better LLM understanding.
-        Preserves original meaning while making it easier to extract search terms.
         """
         normalized = query.lower().strip()
         
-        # Apply pattern replacements
         for pattern, replacement in self.LIBERIAN_PATTERNS.items():
             normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
         
-        # Clean up extra spaces
         normalized = re.sub(r'\s+', ' ', normalized).strip()
-        
         return normalized
 
     def _extract_search_terms(self, query, original_query=None):
@@ -117,34 +112,34 @@ Common LIBERIAN Kolokwa patterns:
 - "My pekin" = "My child/little one"
 - "My ba" = "My friend"
 - "Da one" = "That one"
-- "I na hungry ooo" = "I'm not hungry" (ooo is emphasis)
-- Questions: "How you doing?", "You say what?", "How I can help you?"
-
-DO NOT use Nigerian patterns like:
-- "Wetin na" (Nigerian, NOT Liberian)
-- "Wetin dey" (Nigerian, NOT Liberian)  
-- "How e dey" (Nigerian, NOT Liberian)
 
 Return ONLY a valid JSON array of the most relevant search terms (words or short phrases).
 Focus on content words (nouns, verbs, adjectives), not grammar words.
 
 Examples:
 - "How you say 'water'?" -> ["water"]
-- "My pekin, how you say 'I love you'?" -> ["love", "I love you"]
-- "I na know da word for friend" -> ["friend"]
+- "I want to eat" -> ["eat", "want to eat"]
+- "I love you" -> ["love", "I love you"]
 - "How you say thank you?" -> ["thank you"]
-- "Tell me how to say good morning" -> ["good morning"]
 
 Original query: "{original_query or query}"
 Normalized query: "{query}"
 
 Return JSON array of search terms:"""
 
-            completion = self.client.responses.create(
+            # CORRECTED: Use chat.completions.create (not responses.create)
+            completion = self.client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
-                input=prompt,
+                messages=[
+                    {"role": "system", "content": "You are a linguistic assistant that extracts search terms. Always return valid JSON arrays."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=150
             )
-            result = completion.output_text.strip()
+            
+            # CORRECTED: Access response correctly
+            result = completion.choices[0].message.content.strip()
 
             # Try parsing JSON safely
             try:
@@ -165,7 +160,7 @@ Return JSON array of search terms:"""
             if result and not any(c in '[]{}' for c in result):
                 return [result]
 
-            # Enhanced fallback heuristic for Liberian patterns
+            # Fallback
             return self._fallback_extraction(query, original_query)
 
         except Exception as e:
@@ -183,10 +178,10 @@ Return JSON array of search terms:"""
         for starter in self.SENTENCE_STARTERS:
             text_lower = re.sub(starter, '', text_lower)
         
-        # Remove common question/command words (Liberian-appropriate)
+        # Remove common question/command words
         remove_words = [
             'how', 'what', 'tell', 'me', 'say', 'can', 'you', 'help',
-            'the', 'a', 'an', 'is', 'be', 'you', 'we', 'i', 'my',
+            'the', 'a', 'an', 'is', 'be', 'we', 'i', 'my',
             'kolokwa', 'koloqua', 'english', 'translate', 'translation',
             'word', 'phrase', 'pekin', 'ba', 'people', '?', '!', '.'
         ]
@@ -201,12 +196,11 @@ Return JSON array of search terms:"""
         
         # Return cleaned words or the whole phrase if short
         if filtered:
-            # If it's a short phrase (2-4 words), keep it together
             if len(filtered) <= 4:
                 return [' '.join(filtered)]
-            return filtered[:3]  # Return top 3 words
+            return filtered[:3]
         
-        # Last resort: return cleaned query
+        # Last resort
         cleaned = text_lower.strip('.,!?\'"')
         return [cleaned] if cleaned else ['help']
 
@@ -220,7 +214,7 @@ Return JSON array of search terms:"""
             if not term or len(term) < 2:
                 continue
                 
-            # Search English translations (exact and partial)
+            # Search English translations
             english_matches = KoloquaEntry.objects.filter(
                 Q(english_translation__icontains=term) |
                 Q(literal_translation__icontains=term) |
@@ -259,22 +253,15 @@ Return JSON array of search terms:"""
         """
         Remove markdown formatting for plain text display.
         """
-        # Remove bold markers
         text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
-        
-        # Remove italic markers
         text = re.sub(r'\*([^*]+)\*', r'\1', text)
         text = re.sub(r'_([^_]+)_', r'\1', text)
-        
-        # Remove code backticks
         text = re.sub(r'`([^`]+)`', r'\1', text)
-        
         return text
 
     def _generate_response(self, original_query, entries, search_terms, normalized_query):
         """
         Generate a natural, culturally-aware response using ONLY verified dictionary entries.
-        NEVER invent or make up translations.
         """
         if not entries:
             return self._generate_not_found_response(original_query, search_terms)
@@ -290,8 +277,7 @@ CRITICAL RULES:
 3. DO NOT use Nigerian Pidgin patterns (no "fo", "hala", "wetin dey", etc.)
 4. Kolokwa is LIBERIAN - keep responses authentic to Liberian speech
 5. ALWAYS show example sentences if they exist in the dictionary entries
-6. If unsure, just quote the dictionary entry directly
-7. Use plain text formatting - NO markdown (no **, *, or ` characters)
+6. Use plain text formatting - NO markdown (no **, *, or ` characters)
 
 User asked: "{original_query}"
 
@@ -299,28 +285,33 @@ Dictionary entries found:
 {entries_text}
 
 Provide a helpful response using ONLY these dictionary entries in PLAIN TEXT format.
-- If example sentences exist, ALWAYS include them in your response
-- If these entries don't fully answer the question, be honest about it and show what IS available
+- If example sentences exist, ALWAYS include them
+- If these entries don't fully answer the question, be honest about it
 - Use simple quotes ("") for emphasis, not markdown
-- Format example sentences clearly so users can see usage
 
 Response:"""
 
-            completion = self.client.responses.create(
+            # CORRECTED: Use chat.completions.create
+            completion = self.client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
-                input=prompt,
+                messages=[
+                    {"role": "system", "content": "You are a helpful Kolokwa dictionary assistant. Use plain text only, no markdown."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=500
             )
             
-            # Clean any markdown that might still appear
-            response = completion.output_text.strip()
-            return self._clean_markdown(response)
+            # CORRECTED: Access response correctly
+            response_text = completion.choices[0].message.content.strip()
+            return self._clean_markdown(response_text)
             
         except Exception as e:
-            logger.error(f"Error generating LLM response: {str(e)}")
+            logger.error(f"Error generating LLM response: {str(e)}", exc_info=True)
             return self._generate_template_response(entries[0], original_query)
 
     def _format_entries(self, entries):
-        """Format dictionary entries for LLM context with emphasis on examples."""
+        """Format dictionary entries for LLM context."""
         formatted = []
         for entry in entries:
             entry_text = f"""
@@ -329,15 +320,14 @@ Entry {len(formatted) + 1}:
 - English: {entry.english_translation}
 - Type: {entry.get_entry_type_display()}"""
             
-            # No markdown in examples
             if entry.example_sentence_koloqua and entry.example_sentence_english:
                 entry_text += f"""
-- EXAMPLE SENTENCE: "{entry.example_sentence_koloqua}" = "{entry.example_sentence_english}"
-  (This is a real example from the dictionary - ALWAYS include this if relevant)"""
+- EXAMPLE: "{entry.example_sentence_koloqua}" = "{entry.example_sentence_english}"
+  (Always include this example if relevant)"""
             
             if entry.context_explanation:
                 entry_text += f"""
-- Usage context: {entry.context_explanation[:150]}"""
+- Usage: {entry.context_explanation[:150]}"""
             
             if entry.pronunciation_guide:
                 entry_text += f"""
@@ -345,7 +335,7 @@ Entry {len(formatted) + 1}:
             
             if entry.literal_translation and entry.literal_translation != entry.english_translation:
                 entry_text += f"""
-- Literal meaning: {entry.literal_translation}"""
+- Literal: {entry.literal_translation}"""
             
             if entry.cultural_notes:
                 entry_text += f"""
@@ -356,7 +346,7 @@ Entry {len(formatted) + 1}:
         return "\n".join(formatted)
 
     def _generate_template_response(self, entry, original_query):
-        """Generate a simple template response as fallback - uses ONLY dictionary data."""
+        """Generate a simple template response as fallback."""
         response = f"In Kolokwa, '{entry.koloqua_text}' means '{entry.english_translation}'."
         
         if entry.example_sentence_koloqua and entry.example_sentence_english:

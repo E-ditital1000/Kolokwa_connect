@@ -38,7 +38,7 @@ WORKOS_CLIENT_ID = config('WORKOS_CLIENT_ID', default='')
 WORKOS_ORGANIZATION_ID = config('WORKOS_ORGANIZATION_ID', default='org_01K7XGJNTS3509AFBSSRPH4KY')
 
 # Site URL (important for callback redirects)
-
+SITE_URL = "https://kolokwa.onrender.com"
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
 # Application definition
@@ -247,7 +247,7 @@ CACHES = {
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:8000",
+    "http://localhost:5000",
 ]
 
 LOGGING = {
@@ -298,14 +298,36 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
-# Django Allauth Configuration
+# ============================================
+# DJANGO ALLAUTH CONFIGURATION
+# ============================================
 SITE_ID = 1
+
+# Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Authentication Method
+ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Login with email, not username
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = True  # Still collect username during signup
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # or 'mandatory' for stricter verification
+ACCOUNT_UNIQUE_EMAIL = True
+
+# User Model Configuration
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
+ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
+
+# URL Redirects
 LOGIN_REDIRECT_URL = '/users/profile/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# Custom Adapter
 ACCOUNT_ADAPTER = 'users.adapter.AccountAdapter'
 
-# Modern django-allauth configuration (v0.50+)
-ACCOUNT_LOGIN_METHODS = {'email'}  # Use email for login
-ACCOUNT_SIGNUP_FIELDS = ['email']  # Only email required for signup
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
-ACCOUNT_UNIQUE_EMAIL = True
+# Session Configuration
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
+
+# Username Configuration
+ACCOUNT_USERNAME_MIN_LENGTH = 3
+ACCOUNT_PRESERVE_USERNAME_CASING = False

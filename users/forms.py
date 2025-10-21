@@ -18,7 +18,8 @@ class UserProfileForm(forms.ModelForm):
         widgets = {
             'bio': forms.Textarea(attrs={
                 'rows': 4,
-                'placeholder': 'Tell us about yourself...'
+                'placeholder': 'Tell us about yourself...',
+                'class': 'form-control'
             }),
             'username': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -39,6 +40,10 @@ class UserProfileForm(forms.ModelForm):
             'phone_number': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': '+231 88 555 0000'
+            }),
+            'profile_picture': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/jpeg,image/jpg,image/png,image/gif,image/webp'
             }),
         }
     
@@ -62,17 +67,37 @@ class UserProfileForm(forms.ModelForm):
     
     def clean_profile_picture(self):
         picture = self.cleaned_data.get('profile_picture')
-        if picture:
+        
+        # If no new picture uploaded, return existing
+        if not picture:
+            return picture
+        
+        # Check if it's a file upload (not just a string path)
+        if hasattr(picture, 'size'):
             # Check file size (limit to 5MB)
             if picture.size > 5 * 1024 * 1024:
                 raise ValidationError('Image file too large ( > 5MB )')
             
-            # Check file type
-            valid_extensions = ['jpg', 'jpeg', 'png', 'gif']
+            # Check file type by extension
+            valid_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
             import os
             ext = os.path.splitext(picture.name)[1][1:].lower()
             if ext not in valid_extensions:
                 raise ValidationError(f'Unsupported file extension. Use: {", ".join(valid_extensions)}')
+            
+            # Try to validate with Pillow if available
+            try:
+                from PIL import Image
+                # Open and verify the image
+                img = Image.open(picture)
+                img.verify()
+                # Reset file pointer after verify
+                picture.seek(0)
+            except ImportError:
+                # Pillow not installed, skip image validation
+                pass
+            except Exception as e:
+                raise ValidationError(f'Invalid image file: {str(e)}')
         
         return picture
 

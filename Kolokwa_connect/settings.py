@@ -38,12 +38,8 @@ WORKOS_CLIENT_ID = config('WORKOS_CLIENT_ID', default='')
 WORKOS_ORGANIZATION_ID = config('WORKOS_ORGANIZATION_ID', default='org_01K7XGJNTS3509AFBSSRPH4KY')
 
 # Site URL (important for callback redirects)
-# Development
-if DEBUG:
-    SITE_URL = 'http://127.0.0.1:5000'
-else:
-    # Production - update this with your actual domain
-    SITE_URL = config('SITE_URL', default='https://kolokwa.onrender.com')
+
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
 # Application definition
 INSTALLED_APPS = [

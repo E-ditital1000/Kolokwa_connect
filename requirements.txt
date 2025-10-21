@@ -48,5 +48,6 @@ jiter==0.11.0
 jsonschema==4.25.1
 jsonschema-path==0.3.4
 jsonschema-specifications==2025.9.1
-python-decouple>=3.8
 psycopg2-binary==2.9.10
+python-decouple>=3.8
+whitenoise==6.6.0

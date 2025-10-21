@@ -43,7 +43,7 @@ if DEBUG:
     SITE_URL = 'http://127.0.0.1:5000'
 else:
     # Production - update this with your actual domain
-    SITE_URL = config('SITE_URL', default='https://your-app.railway.app')
+    SITE_URL = config('SITE_URL', default='https://kolokwa.onrender.com')
 
 # Application definition
 INSTALLED_APPS = [

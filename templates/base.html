@@ -83,20 +83,6 @@
     </div>
     <!-- Navbar End -->
 
-    <!-- Messages -->
-    {% if messages %}
-        <div class="container mt-3">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="close" data-dismiss="alert">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
     <!-- Main Content -->
     {% block content %}{% endblock %}
 
@@ -151,7 +137,7 @@
                         <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>Help Center</a>
                         <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>Contribution Guidelines</a>
                         <a class="text-white-50 mb-2" href="/api/docs/"><i class="fa fa-angle-right mr-2"></i>API Documentation</a>
-                        <a class="text-white-50 mb-2" href="#"><i class="fa fa-angle-right mr-2"></i>Mobile App</a>
+                        <a class="text-white-50 mb-2" href="#" id="pwa-install-link"><i class="fa fa-angle-right mr-2"></i>Mobile App</a>
                         <a class="text-white-50" href="#"><i class="fa fa-angle-right mr-2"></i>Partners</a>
                     </div>
                 </div>
@@ -207,6 +193,35 @@
     <!-- Custom Scripts -->
     {% block scripts %}
     <script>
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installButton = document.getElementById('pwa-install-link');
+            if (installButton) {
+                installButton.style.display = 'block'; // Or change its styling to indicate availability
+            }
+        });
+
+        const pwaInstallLink = document.getElementById('pwa-install-link');
+        if (pwaInstallLink) {
+            pwaInstallLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the A2HS prompt');
+                        } else {
+                            console.log('User dismissed the A2HS prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                }
+            });
+        }
+
         $(function () {
             // Initialize tooltips
             $('[data-toggle="tooltip"]').tooltip();

@@ -2,7 +2,7 @@
 from django.shortcuts import render
 from dictionary.models import KoloquaEntry, WordCategory, TranslationHistory
 from users.models import User
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import HttpResponse
 
 def home(request):
@@ -27,7 +27,15 @@ def home(request):
 
     # Get statistics for the dashboard
     word_count = KoloquaEntry.objects.filter(status='verified').count()
-    contributor_count = User.objects.filter(is_active=True, contributions_count__gt=0).count()
+    
+    # FIXED: Use annotation instead of filtering by non-existent field
+    contributor_count = User.objects.annotate(
+        entry_count=Count('contributions')
+    ).filter(
+        is_active=True,
+        entry_count__gt=0
+    ).count()
+    
     translation_count = TranslationHistory.objects.filter(found=True).count()
     example_count = KoloquaEntry.objects.exclude(example_sentence_koloqua='').count()
     
@@ -56,8 +64,14 @@ def about(request):
     # Total registered users on platform
     total_users = User.objects.filter(is_active=True).count()
     
+    # FIXED: Use annotation instead of filtering by non-existent field
     # Active contributors (users who have made contributions)
-    contributor_count = User.objects.filter(is_active=True, contributions_count__gt=0).count()
+    contributor_count = User.objects.annotate(
+        entry_count=Count('contributions')
+    ).filter(
+        is_active=True,
+        entry_count__gt=0
+    ).count()
     
     # Total translations found
     translation_count = TranslationHistory.objects.filter(found=True).count()
@@ -71,7 +85,7 @@ def about(request):
 
     context = {
         'word_count': word_count,
-        'total_users': total_users,  # NEW: Total users
+        'total_users': total_users,  # Total users
         'contributor_count': contributor_count,  # Active contributors
         'translation_count': translation_count,
         'example_count': example_count,

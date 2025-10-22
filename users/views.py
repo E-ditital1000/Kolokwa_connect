@@ -246,12 +246,14 @@ class LeaderboardView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         
         # Get top contributors and annotate with their contribution count
-        context['top_contributors'] = User.objects.annotate(
-            num_contributions=Count('contributions')
+        top_contributors = User.objects.annotate(
+            num_contributions=Count('contributions')  # Changed to 'contributions'
         ).filter(
             is_active=True,
             num_contributions__gt=0
         ).order_by('-points')[:10]
+        
+        context['top_contributors'] = top_contributors
         
         # Get current user's rank if logged in
         if self.request.user.is_authenticated:
@@ -260,10 +262,14 @@ class LeaderboardView(LoginRequiredMixin, TemplateView):
             ).count() + 1
             context['user_rank'] = user_rank
         
-        # Statistics
-        context['total_contributors'] = User.objects.filter(
-            contributions_count__gt=0
+        # Statistics - CORRECTED with proper field name
+        context['total_contributors'] = User.objects.annotate(
+            entry_count=Count('contributions')  # Changed to 'contributions'
+        ).filter(
+            is_active=True,
+            entry_count__gt=0
         ).count()
+        
         context['total_contributions'] = KoloquaEntry.objects.count()
         context['verified_contributions'] = KoloquaEntry.objects.filter(
             status='verified'

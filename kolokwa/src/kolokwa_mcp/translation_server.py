@@ -8,12 +8,11 @@ import os
 import sys
 import django
 
-# Get the absolute path to the Django project root
-# Adjust the path based on your actual structure
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PROJECT_ROOT = os.path.join(BASE_DIR, '..')  # Go up to kolokwa_connect directory
 
-# Add the project root to the Python path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.join(BASE_DIR, '..')  
+
+
 sys.path.insert(0, PROJECT_ROOT)
 
 # Set the Django settings module
@@ -39,9 +38,7 @@ mcp = create_server("kolokwa-translator")
 # Print startup information
 print_startup_info()
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
+
 
 @sync_to_async
 def _find_relevant_entries_sync(text: str, search_english: bool, limit: int):

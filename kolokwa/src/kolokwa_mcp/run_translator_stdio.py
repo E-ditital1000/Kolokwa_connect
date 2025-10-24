@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Run Kolokwa Translation MCP Server with STDIO transport for Claude Desktop"""
 import os
 import sys
 from pathlib import Path
@@ -11,13 +12,17 @@ os.environ['DEBUG'] = 'True'
 os.environ['LOG_LEVEL'] = 'DEBUG'
 os.environ['MCP_TRANSPORT'] = 'stdio'
 
+# Redirect stdout to stderr for logging (keep stdin/stdout clean for MCP protocol)
 original_stdout = sys.stdout
 sys.stdout = sys.stderr
 
 try:
+    # Setup paths
     current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent.parent.parent
-    mcp_src_dir = current_file.parent.parent
+    # This file is at: kolokwa_connect/kolokwa/src/kolokwa_mcp/run_translator_stdio.py
+    # Go up 4 levels to reach kolokwa_connect root
+    project_root = current_file.parent.parent.parent.parent  # kolokwa_connect
+    mcp_src_dir = current_file.parent  # kolokwa_mcp directory
     
     sys.path.insert(0, str(project_root))
     sys.path.insert(1, str(mcp_src_dir))
@@ -27,23 +32,27 @@ try:
     print(f"Environment: {os.environ.get('ENVIRONMENT')}", file=sys.stderr)
     print(f"Auth: {os.environ.get('MCP_AUTH_ENABLED')}", file=sys.stderr)
     
+    # Setup Django
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Kolokwa_connect.settings')
     
     import django
     django.setup()
     print("Django setup complete", file=sys.stderr)
     
-    from kolokwa_mcp import translation_server
+    # Import the server module - it's in the same directory
+    from translation_server import mcp as translation_mcp
     
-    print(f"Tools: {len(translation_server.mcp.list_tools())}", file=sys.stderr)
-    print(f"Prompts: {len(translation_server.mcp.list_prompts())}", file=sys.stderr)
+    print("Server loaded successfully", file=sys.stderr)
     print("Ready for Claude Desktop", file=sys.stderr)
     
+    # Restore stdout for MCP protocol
     sys.stdout = original_stdout
-    translation_server.mcp.run()
+    
+    # Run the server
+    translation_mcp.run(transport='stdio')
     
 except Exception as e:
     import traceback
-    print(f"ERROR: {e}", file=sys.stderr)
+    print(f"FATAL ERROR: {e}", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
     sys.exit(1)

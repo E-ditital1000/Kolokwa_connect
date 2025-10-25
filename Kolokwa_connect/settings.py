@@ -20,18 +20,6 @@ import cloudinary.api
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-# ============================================================================
-# FASTMCP CLOUD DETECTION - MUST BE FIRST
-# ============================================================================
-# Detect if running in FastMCP Cloud environment
-IS_FASTMCP_CLOUD = os.getenv('FASTMCP_CLOUD_URL') or os.getenv('FASTMCP_CLOUD_GIT_COMMIT_SHA')
-
-if IS_FASTMCP_CLOUD:
-    print("🌩️  FastMCP Cloud environment detected - using cloud-optimized settings")
-    # Override database settings for FastMCP Cloud
-    os.environ.setdefault('DATABASE_ENGINE', 'django.db.backends.sqlite3')
-    os.environ.setdefault('DATABASE_NAME', '/tmp/db.sqlite3')
-    os.environ.setdefault('DEBUG', 'False')
 
 # ============================================================================
 # CORE DJANGO SETTINGS
@@ -185,11 +173,9 @@ else:
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Use simple storage in development or FastMCP Cloud
-if DEBUG or IS_FASTMCP_CLOUD:
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-else:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Use WhiteNoise to serve static files with compressed and hashed filenames
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -238,24 +224,6 @@ RAG_CONFIG = {
     'SEMANTIC_WEIGHT': 0.7,
 }
 
-# ============================================================================
-# CACHE CONFIGURATION
-# ============================================================================
-if IS_FASTMCP_CLOUD:
-    # Use local memory cache for FastMCP Cloud
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'fastmcp-cache',
-        }
-    }
-else:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-            'LOCATION': 'cache_table',
-        }
-    }
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
@@ -296,16 +264,6 @@ LOGGING = {
     },
 }
 
-# ============================================================================
-# CELERY CONFIGURATION
-# ============================================================================
-if not IS_FASTMCP_CLOUD:
-    CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379')
-    CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379')
-    CELERY_ACCEPT_CONTENT = ['json']
-    CELERY_TASK_SERIALIZER = 'json'
-    CELERY_RESULT_SERIALIZER = 'json'
-    CELERY_TIMEZONE = TIME_ZONE
 
 # API Documentation
 SPECTACULAR_SETTINGS = {

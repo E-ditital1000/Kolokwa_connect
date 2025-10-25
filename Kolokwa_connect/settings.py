@@ -118,30 +118,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Kolokwa_connect.wsgi.application'
 
-# ============================================================================
-# DATABASE CONFIGURATION - WITH FASTMCP CLOUD SUPPORT
-# ============================================================================
-if IS_FASTMCP_CLOUD:
-    # Use SQLite for FastMCP Cloud (read-only MCP server)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': '/tmp/db.sqlite3',
-        }
+
+DATABASES = {
+    'default': {
+        'ENGINE': os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.getenv('DATABASE_NAME', str(BASE_DIR / 'db.sqlite3')),
+        'USER': os.getenv('DATABASE_USER', ''),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
+        'HOST': os.getenv('DATABASE_HOST', ''),
+        'PORT': os.getenv('DATABASE_PORT', ''),
     }
-    print(f"📊 Using SQLite database for FastMCP Cloud: /tmp/db.sqlite3")
-else:
-    # Use configured database (PostgreSQL for production, SQLite for dev)
-    DATABASES = {
-        'default': {
-            'ENGINE': os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3'),
-            'NAME': os.getenv('DATABASE_NAME', str(BASE_DIR / 'db.sqlite3')),
-            'USER': os.getenv('DATABASE_USER', ''),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
-            'HOST': os.getenv('DATABASE_HOST', ''),
-            'PORT': os.getenv('DATABASE_PORT', ''),
-        }
-    }
+}
+
 
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'

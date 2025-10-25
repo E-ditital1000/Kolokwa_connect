@@ -151,6 +151,12 @@ try:
     os.environ['DJANGO_SETTINGS_MODULE'] = settings_module
     os.environ['MCP_TRANSPORT'] = 'http'
     
+    # Ensure SECRET_KEY is set for Django (use a default for build/inspection)
+    if not os.environ.get('SECRET_KEY'):
+        # This is safe because it's only used during build/inspection, not in production runtime
+        os.environ['SECRET_KEY'] = 'django-insecure-build-time-key-for-inspection-only-not-used-in-production'
+        print("⚠ Using default SECRET_KEY for build/inspection phase", file=sys.stderr)
+    
     print(f"\n✓ Django Settings Module: {settings_module}", file=sys.stderr)
     print(f"✓ Transport: http", file=sys.stderr)
     
@@ -292,6 +298,9 @@ Provide the English translation."""
     # FastMCP Cloud will handle running the server when it imports this module
     # The mcp object is exposed at module level for FastMCP to use
     
+    # For FastMCP Cloud compatibility, also expose as 'app'
+    app = mcp
+    
 except ImportError as e:
     print("\n" + "=" * 60, file=sys.stderr)
     print("❌ IMPORT ERROR", file=sys.stderr)
@@ -318,6 +327,3 @@ except Exception as e:
     traceback.print_exc(file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     sys.exit(1)
-
-
-    

@@ -1,3 +1,4 @@
+#kolokwa_connect/dictionary/models.py
 import os
 from django.db import models
 from django.db import models

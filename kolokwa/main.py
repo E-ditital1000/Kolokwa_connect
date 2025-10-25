@@ -69,10 +69,7 @@ def main():
         run_http_server(mcp, Config.HTTP_PORT, Config.HTTP_HOST)
     else:
         logger.info("Starting in STDIO mode (Claude Desktop)...")
-        # When using `mcp dev`, it will handle the server loop
-        # When running directly, we start the stdio server
-        if __name__ == "__main__":
-            mcp.run()
+        mcp.run()
 
 
 # ============================================================================
@@ -103,13 +100,17 @@ def run_http(port: int = None, host: str = None):
 if __name__ == "__main__":
     import argparse
     
-    # Check if being run via uvicorn or mcp dev
-    # If so, just do initialization
-    if any(cmd in ' '.join(sys.argv) for cmd in ['uvicorn', 'mcp']):
+    # Check if being run via uvicorn, mcp dev, or fastmcp inspect
+    # If so, just do initialization without running the server
+    inspection_keywords = ['uvicorn', 'mcp', 'fastmcp', 'inspect']
+    is_being_inspected = any(keyword in ' '.join(sys.argv).lower() for keyword in inspection_keywords)
+    
+    if is_being_inspected:
         print_startup_info()
         print_server_info()
+        logger.info("✓ Server initialized (not starting - will be run by external tool)")
     else:
-        # Parse command line arguments
+        # Parse command line arguments for direct execution
         parser = argparse.ArgumentParser(
             description='Kolokwa MCP Servers',
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -161,7 +162,8 @@ Examples:
         if args.debug:
             Config.DEBUG = True
             Config.LOG_LEVEL = 'DEBUG'
-            logger.setLevel('DEBUG')
+            import logging
+            logger.setLevel(logging.DEBUG)
         
         # Override transport if --http specified
         if args.http:

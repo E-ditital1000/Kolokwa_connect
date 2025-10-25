@@ -245,30 +245,22 @@ try:
     print("✓ Registration complete", file=sys.stderr)
     print_startup_info()
     
-    # Get HTTP configuration
-    http_host = os.getenv('MCP_HTTP_HOST', '0.0.0.0')
-    http_port = int(os.getenv('MCP_HTTP_PORT', '8000'))
+    # Check if we're being inspected (this check happens at module level)
+    # The 'fastmcp inspect' command will import this module to get the mcp object
+    is_inspection = 'fastmcp' in sys.argv[0].lower() or 'inspect' in ' '.join(sys.argv).lower()
     
-    # Check if we're being run directly or being imported/inspected
-    if __name__ == "__main__":
-        # Check if being inspected by FastMCP
-        if 'fastmcp' in sys.argv[0].lower() or 'inspect' in ' '.join(sys.argv).lower():
-            print("\n✓ MCP server initialized and ready for inspection", file=sys.stderr)
-        else:
-            # Normal startup - run the server
-            print("\n" + "=" * 60, file=sys.stderr)
-            print("STARTING HTTP SERVER", file=sys.stderr)
-            print("=" * 60, file=sys.stderr)
-            print(f"Host: {http_host}", file=sys.stderr)
-            print(f"Port: {http_port}", file=sys.stderr)
-            print(f"URL: http://localhost:{http_port}", file=sys.stderr)
-            print("=" * 60, file=sys.stderr)
-            
-            # Run server
-            mcp.run(transport='http', host=http_host, port=http_port)
-    else:
-        # Being imported for inspection - just expose the mcp object
+    if is_inspection:
+        # During inspection, just expose the mcp object
         print("\n✓ MCP server initialized and ready for inspection", file=sys.stderr)
+    else:
+        # This is not inspection - it's actual runtime
+        # The FastMCP cloud runtime will handle starting the server
+        # We just need to expose the mcp object
+        print("\n✓ MCP server initialized and ready for runtime", file=sys.stderr)
+    
+    # NOTE: We do NOT call mcp.run() here anymore!
+    # FastMCP Cloud will handle running the server when it imports this module
+    # The mcp object is exposed at module level for FastMCP to use
     
 except ImportError as e:
     print("\n" + "=" * 60, file=sys.stderr)

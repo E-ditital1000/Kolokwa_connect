@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Wrapper script to run the Kolokwa dictionary MCP server with HTTP transport"""
+"""Wrapper script to run the Kolokwa translation MCP server with HTTP transport"""
 import os
 import sys
 import traceback
@@ -10,7 +10,7 @@ sys.stdout = sys.stderr
 
 try:
     print("=" * 60, file=sys.stderr)
-    print("KOLOKWA DICTIONARY SERVER - STARTUP (HTTP)", file=sys.stderr)
+    print("KOLOKWA TRANSLATION SERVER - STARTUP (HTTP)", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
     # Get the project root directory - USE CASE-SENSITIVE PATH RESOLUTION
@@ -173,74 +173,104 @@ try:
     
     # Create MCP server
     print("Creating MCP server...", file=sys.stderr)
-    mcp = create_server("kolokwa-dictionary")
+    mcp = create_server("kolokwa-translator")
     print("✓ MCP server created", file=sys.stderr)
     
     # Import Django models
     print("Importing Django models...", file=sys.stderr)
-    from dictionary.models import KoloquaEntry, WordCategory, TranslationHistory
-    from users.models import User
-    from django.db.models import Q, Count
+    from dictionary.models import KoloquaEntry, TranslationHistory
+    from django.db.models import Q
     from asgiref.sync import sync_to_async
     import json
     print("✓ Django models imported", file=sys.stderr)
     
-    # Register resources and tools
-    print("Registering resources and tools...", file=sys.stderr)
+    # Register prompts and tools
+    print("Registering prompts and tools...", file=sys.stderr)
     
-    @mcp.resource("kolokwa://dictionary/stats")
-    @handle_errors_sync
-    def get_dictionary_stats() -> str:
-        """Get overall statistics about the Kolokwa dictionary"""
-        def compute_stats():
-            return {
-                "total_entries": KoloquaEntry.objects.filter(status='verified').count(),
-                "pending_entries": KoloquaEntry.objects.filter(status='pending').count(),
-                "total_contributors": User.objects.filter(contributions_count__gt=0).count(),
-                "words": KoloquaEntry.objects.filter(status='verified', entry_type='word').count(),
-                "phrases": KoloquaEntry.objects.filter(status='verified', entry_type='phrase').count(),
-            }
+    # Helper functions
+    @sync_to_async
+    def _find_relevant_entries_sync(text: str, search_english: bool, limit: int):
+        """Find dictionary entries relevant to the given text."""
+        words = text.lower().split()
         
-        stats = get_cached_or_compute('dictionary_stats', compute_stats)
-        return json.dumps(stats, indent=2)
+        if search_english:
+            results = KoloquaEntry.objects.filter(
+                status='verified'
+            ).filter(
+                Q(english_translation__icontains=text) |
+                Q(english_translation__in=words)
+            ).distinct()[:limit]
+        else:
+            results = KoloquaEntry.objects.filter(
+                status='verified'
+            ).filter(
+                Q(koloqua_text__icontains=text) |
+                Q(koloqua_text__in=words)
+            ).distinct()[:limit]
+        
+        return list(results)
     
+    def format_dictionary_context(entries: list) -> str:
+        """Format dictionary entries as context for translation."""
+        if not entries:
+            return "No relevant dictionary entries found."
+        
+        context = []
+        for entry in entries:
+            entry_str = f"- {entry.koloqua_text} → {entry.english_translation}"
+            context.append(entry_str)
+        
+        return "\n".join(context)
+    
+    # Register prompts
+    @mcp.prompt()
+    @handle_errors_sync
+    def translate_to_kolokwa(text: str) -> str:
+        """Translate English text to Kolokwa using dictionary context."""
+        import asyncio
+        entries = asyncio.run(_find_relevant_entries_sync(text, search_english=True, limit=5))
+        context_str = format_dictionary_context(entries)
+        
+        return f"""Translate English to Kolokwa.
+
+Dictionary context:
+{context_str}
+
+Translate: "{text}"
+
+Provide the Kolokwa translation."""
+    
+    @mcp.prompt()
+    @handle_errors_sync
+    def translate_to_english(text: str) -> str:
+        """Translate Kolokwa text to English using dictionary context."""
+        import asyncio
+        entries = asyncio.run(_find_relevant_entries_sync(text, search_english=False, limit=5))
+        context_str = format_dictionary_context(entries)
+        
+        return f"""Translate Kolokwa to English.
+
+Dictionary context:
+{context_str}
+
+Translate: "{text}"
+
+Provide the English translation."""
+    
+    # Register tools
     @mcp.tool()
     @handle_errors
-    @track_performance("search_dictionary")
-    async def search_dictionary(query: str, search_type: str = "all", limit: int = 10) -> str:
-        """Search the Kolokwa dictionary"""
+    @track_performance("find_translation_context")
+    async def find_translation_context(text: str, language: str) -> str:
+        """Find relevant dictionary entries to help with translation."""
+        if language not in ['kolokwa', 'english']:
+            raise ValueError("Language must be 'kolokwa' or 'english'")
         
-        @sync_to_async
-        def _search():
-            if search_type == "kolokwa":
-                results = KoloquaEntry.objects.filter(
-                    status='verified', koloqua_text__icontains=query
-                )
-            elif search_type == "english":
-                results = KoloquaEntry.objects.filter(
-                    status='verified', english_translation__icontains=query
-                )
-            else:
-                results = KoloquaEntry.objects.filter(
-                    Q(status='verified'),
-                    Q(koloqua_text__icontains=query) | 
-                    Q(english_translation__icontains=query)
-                )
-            
-            results = results.distinct()[:min(limit, Config.MAX_SEARCH_RESULTS)]
-            
-            entries = []
-            for entry in results:
-                entries.append({
-                    "id": entry.id,
-                    "kolokwa": entry.koloqua_text,
-                    "english": entry.english_translation,
-                    "entry_type": entry.entry_type,
-                })
-            return entries
+        search_english = (language == "english")
+        entries = await _find_relevant_entries_sync(text, search_english, 10)
+        context_str = format_dictionary_context(entries)
         
-        entries = await _search()
-        return json.dumps({"query": query, "results": len(entries), "entries": entries}, indent=2)
+        return f"Found {len(entries)} relevant entries:\n\n{context_str}"
     
     print("✓ Registration complete", file=sys.stderr)
     print_startup_info()
@@ -261,6 +291,9 @@ try:
     # NOTE: We do NOT call mcp.run() here anymore!
     # FastMCP Cloud will handle running the server when it imports this module
     # The mcp object is exposed at module level for FastMCP to use
+    
+    # For FastMCP Cloud compatibility, also expose as 'app'
+    app = mcp
     
 except ImportError as e:
     print("\n" + "=" * 60, file=sys.stderr)

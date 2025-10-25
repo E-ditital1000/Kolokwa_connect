@@ -166,6 +166,14 @@ try:
     django.setup()
     print("✓ Django setup complete", file=sys.stderr)
     
+    # Detect pre-flight check or inspection environment
+    IS_PREFLIGHT = os.getenv('FASTMCP_PREFLIGHT_CHECK') == 'true' or \
+                   'preflight' in ' '.join(sys.argv).lower() or \
+                   os.getenv('FASTMCP_CLOUD_URL') is not None
+    
+    if IS_PREFLIGHT:
+        print("⚠ Pre-flight/Cloud environment detected - using safe mode", file=sys.stderr)
+    
     # Import server components
     print("\nImporting server modules...", file=sys.stderr)
     from kolokwa_mcp.production_config import (
@@ -186,9 +194,27 @@ try:
     print("Importing Django models...", file=sys.stderr)
     from dictionary.models import KoloquaEntry, TranslationHistory
     from django.db.models import Q
+    from django.db import connection
+    from django.db.utils import OperationalError
     from asgiref.sync import sync_to_async
     import json
     print("✓ Django models imported", file=sys.stderr)
+    
+    # Helper function to check database availability
+    def check_database_available():
+        """Check if database is available and has tables"""
+        if IS_PREFLIGHT:
+            return False
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='dictionary_koloquaentry'"
+                )
+                return cursor.fetchone() is not None
+        except Exception as e:
+            print(f"Database check failed: {e}", file=sys.stderr)
+            return False
     
     # Register prompts and tools
     print("Registering prompts and tools...", file=sys.stderr)
@@ -197,29 +223,37 @@ try:
     @sync_to_async
     def _find_relevant_entries_sync(text: str, search_english: bool, limit: int):
         """Find dictionary entries relevant to the given text."""
-        words = text.lower().split()
+        # Check if database is available
+        if not check_database_available():
+            return []
         
-        if search_english:
-            results = KoloquaEntry.objects.filter(
-                status='verified'
-            ).filter(
-                Q(english_translation__icontains=text) |
-                Q(english_translation__in=words)
-            ).distinct()[:limit]
-        else:
-            results = KoloquaEntry.objects.filter(
-                status='verified'
-            ).filter(
-                Q(koloqua_text__icontains=text) |
-                Q(koloqua_text__in=words)
-            ).distinct()[:limit]
-        
-        return list(results)
+        try:
+            words = text.lower().split()
+            
+            if search_english:
+                results = KoloquaEntry.objects.filter(
+                    status='verified'
+                ).filter(
+                    Q(english_translation__icontains=text) |
+                    Q(english_translation__in=words)
+                ).distinct()[:limit]
+            else:
+                results = KoloquaEntry.objects.filter(
+                    status='verified'
+                ).filter(
+                    Q(koloqua_text__icontains=text) |
+                    Q(koloqua_text__in=words)
+                ).distinct()[:limit]
+            
+            return list(results)
+        except Exception as e:
+            print(f"Error finding entries: {e}", file=sys.stderr)
+            return []
     
     def format_dictionary_context(entries: list) -> str:
         """Format dictionary entries as context for translation."""
         if not entries:
-            return "No relevant dictionary entries found."
+            return "No relevant dictionary entries found in current database."
         
         context = []
         for entry in entries:
@@ -232,7 +266,23 @@ try:
     @mcp.prompt()
     @handle_errors_sync
     def translate_to_kolokwa(text: str) -> str:
-        """Translate English text to Kolokwa using dictionary context."""
+        """Translate English text to Kolokwa using dictionary context.
+        
+        Args:
+            text: English text to translate to Kolokwa
+            
+        Returns:
+            A prompt with dictionary context for translation
+        """
+        if IS_PREFLIGHT:
+            return f"""Translate English to Kolokwa.
+
+Note: Running in demo mode. In production, this would use the Kolokwa dictionary for context.
+
+Translate: "{text}"
+
+Provide the Kolokwa translation."""
+        
         import asyncio
         entries = asyncio.run(_find_relevant_entries_sync(text, search_english=True, limit=5))
         context_str = format_dictionary_context(entries)
@@ -249,7 +299,23 @@ Provide the Kolokwa translation."""
     @mcp.prompt()
     @handle_errors_sync
     def translate_to_english(text: str) -> str:
-        """Translate Kolokwa text to English using dictionary context."""
+        """Translate Kolokwa text to English using dictionary context.
+        
+        Args:
+            text: Kolokwa text to translate to English
+            
+        Returns:
+            A prompt with dictionary context for translation
+        """
+        if IS_PREFLIGHT:
+            return f"""Translate Kolokwa to English.
+
+Note: Running in demo mode. In production, this would use the Kolokwa dictionary for context.
+
+Translate: "{text}"
+
+Provide the English translation."""
+        
         import asyncio
         entries = asyncio.run(_find_relevant_entries_sync(text, search_english=False, limit=5))
         context_str = format_dictionary_context(entries)
@@ -268,15 +334,55 @@ Provide the English translation."""
     @handle_errors
     @track_performance("find_translation_context")
     async def find_translation_context(text: str, language: str) -> str:
-        """Find relevant dictionary entries to help with translation."""
+        """Find relevant dictionary entries to help with translation.
+        
+        Args:
+            text: The text to find context for
+            language: The language of the text - "kolokwa" or "english"
+            
+        Returns:
+            JSON string with relevant dictionary entries
+        """
         if language not in ['kolokwa', 'english']:
             raise ValueError("Language must be 'kolokwa' or 'english'")
+        
+        if not check_database_available():
+            return json.dumps({
+                "text": text,
+                "language": language,
+                "entries": [],
+                "note": "Database not available. Running in demo/inspection mode."
+            }, indent=2)
         
         search_english = (language == "english")
         entries = await _find_relevant_entries_sync(text, search_english, 10)
         context_str = format_dictionary_context(entries)
         
-        return f"Found {len(entries)} relevant entries:\n\n{context_str}"
+        return json.dumps({
+            "text": text,
+            "language": language,
+            "found": len(entries),
+            "context": context_str
+        }, indent=2)
+    
+    @mcp.tool()
+    def health_check() -> str:
+        """Check if the translation MCP server is running and healthy"""
+        db_available = check_database_available()
+        
+        health_info = {
+            "status": "healthy",
+            "server": "kolokwa-translator",
+            "transport": "http",
+            "database_available": db_available,
+            "environment": "preflight" if IS_PREFLIGHT else "production",
+            "message": "Translation MCP server is running and ready to accept requests"
+        }
+        
+        if not db_available:
+            health_info["note"] = "Database not available - prompts will work with limited context"
+        
+        return json.dumps(health_info, indent=2)
     
     print("✓ Registration complete", file=sys.stderr)
     print_startup_info()

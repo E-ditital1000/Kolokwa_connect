@@ -17,18 +17,20 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-
-# ============================================================================
-# CORE DJANGO SETTINGS
-# ============================================================================
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-default-key-change-in-production')
+SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = "gpt-4o-mini"
+
+# WorkOS Configuration
+WORKOS_API_KEY = config('WORKOS_API_KEY', default='')
+WORKOS_CLIENT_ID = config('WORKOS_CLIENT_ID', default='')
 
 # WorkOS Configuration
 WORKOS_API_KEY = config('WORKOS_API_KEY', default='')
@@ -36,7 +38,8 @@ WORKOS_CLIENT_ID = config('WORKOS_CLIENT_ID', default='')
 WORKOS_ORGANIZATION_ID = config('WORKOS_ORGANIZATION_ID', default='org_01K7XGJNTS3509AFBSSRPH4KY')
 
 # Site URL (important for callback redirects)
-SITE_URL = config('SITE_URL', default='http://127.0.0.1:5000')
+SITE_URL = "https://kolokwa.onrender.com"
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
 # Application definition
 INSTALLED_APPS = [
@@ -51,7 +54,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework.authtoken',
-    'rest_framework_simplejwt',
+    'rest_framework_simplejwt',  # Added for JWT support
     'dj_rest_auth',
     'dj_rest_auth.registration',
     'allauth',
@@ -60,6 +63,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'drf_spectacular',
+
     'cloudinary_storage',
     'cloudinary',
     
@@ -69,6 +73,8 @@ INSTALLED_APPS = [
     'gamification.apps.GamificationConfig',
     'nl_interact.apps.NlInteractConfig',  
 ]
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -87,6 +93,7 @@ ROOT_URLCONF = 'Kolokwa_connect.urls'
 
 # Anthropic API Key for translation
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', 'your-api-key-here')
+
 
 TEMPLATES = [
     {
@@ -136,9 +143,7 @@ TIME_ZONE = 'Africa/Monrovia'
 USE_I18N = True
 USE_TZ = True
 
-# ============================================================================
-# STATIC FILES CONFIGURATION
-# ============================================================================
+# Static files - UPDATED SECTION
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
@@ -148,45 +153,53 @@ if static_dir.exists():
 else:
     STATICFILES_DIRS = []
 
-# ============================================================================
-# CLOUDINARY CONFIGURATION
-# ============================================================================
+# CLOUDINARY CONFIGURATION - ALL IN ONE PLACE
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
-    'API_KEY': config('CLOUDINARY_API_KEY', default=''),
-    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
 }
 
-# Only initialize Cloudinary if credentials are provided
-if all([CLOUDINARY_STORAGE['CLOUD_NAME'], CLOUDINARY_STORAGE['API_KEY'], CLOUDINARY_STORAGE['API_SECRET']]):
-    cloudinary.config(
-        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
-        api_key=CLOUDINARY_STORAGE['API_KEY'],
-        api_secret=CLOUDINARY_STORAGE['API_SECRET'],
-        secure=True
-    )
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-else:
-    # Use local storage if Cloudinary not configured
+# Initialize Cloudinary with credentials (THIS IS CRITICAL)
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+    secure=True
+)
+
+# Storage configuration
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Use local storage in development
+if DEBUG:
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_ROOT = BASE_DIR / 'media'
+else:
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+MEDIA_URL = '/media/'
+
+
+
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
-# Use WhiteNoise to serve static files with compressed and hashed filenames
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# FIX: Use simple storage in development
+if DEBUG:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+else:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ============================================================================
-# REST FRAMEWORK CONFIGURATION
-# ============================================================================
+# REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Added JWT
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
@@ -217,25 +230,26 @@ SIMPLE_JWT = {
 
 # RAG Configuration
 RAG_CONFIG = {
-    'EMBEDDING_MODEL': 'text-embedding-3-small',
-    'TOP_K_RESULTS': 5,
-    'SIMILARITY_THRESHOLD': 0.5,
-    'HYBRID_SEARCH': True,
-    'SEMANTIC_WEIGHT': 0.7,
+    'EMBEDDING_MODEL': 'text-embedding-3-small',  # Cost-effective
+    'TOP_K_RESULTS': 5,  # Number of entries to retrieve
+    'SIMILARITY_THRESHOLD': 0.5,  # Minimum similarity score
+    'HYBRID_SEARCH': True,  # Combine semantic + keyword
+    'SEMANTIC_WEIGHT': 0.7,  # Weight for semantic search
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_table',
+    }
+}
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5000",
 ]
 
-# ============================================================================
-# LOGGING CONFIGURATION
-# ============================================================================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -250,20 +264,32 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'file'],
         'level': 'INFO',
     },
     'loggers': {
         'nl_interact': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
             'propagate': False,
         },
     },
 }
 
+# Celery Configuration
+CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
 
 # API Documentation
 SPECTACULAR_SETTINGS = {
@@ -272,19 +298,19 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
-# ============================================================================
+# ============================================
 # DJANGO ALLAUTH CONFIGURATION
-# ============================================================================
+# ============================================
 SITE_ID = 1
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Authentication Method
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Login with email, not username
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_USERNAME_REQUIRED = True  # Still collect username during signup
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # or 'mandatory' for stricter verification
 ACCOUNT_UNIQUE_EMAIL = True
 
 # User Model Configuration

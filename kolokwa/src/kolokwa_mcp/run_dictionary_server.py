@@ -27,11 +27,9 @@ try:
         current = path
         
         while current != current.parent:
-            # Get actual directory listing to find correct case
             parent = current.parent
             if parent.exists():
                 try:
-                    # List directory contents to get actual case
                     actual_name = None
                     for item in parent.iterdir():
                         if item.name.lower() == current.name.lower():
@@ -60,26 +58,19 @@ try:
     print(f"Resolving case-sensitive paths...", file=sys.stderr)
     current_file = get_actual_case_path(current_file)
     
-    mcp_dir = current_file.parent  # kolokwa_mcp
-    src_dir = mcp_dir.parent  # src
-    kolokwa_dir = src_dir.parent  # kolokwa
-    kolokwa_connect_dir = kolokwa_dir.parent  # kolokwa_connect
-    
-    # Get actual case for kolokwa_connect directory
+    mcp_dir = current_file.parent
+    src_dir = mcp_dir.parent
+    kolokwa_dir = src_dir.parent
+    kolokwa_connect_dir = kolokwa_dir.parent
     kolokwa_connect_dir = get_actual_case_path(kolokwa_connect_dir)
     
     print(f"Current file: {current_file}", file=sys.stderr)
-    print(f"MCP dir: {mcp_dir}", file=sys.stderr)
-    print(f"Src dir: {src_dir}", file=sys.stderr)
-    print(f"Kolokwa dir: {kolokwa_dir}", file=sys.stderr)
-    print(f"Kolokwa_connect dir: {kolokwa_connect_dir}", file=sys.stderr)
+    print(f"Django root: {kolokwa_connect_dir}", file=sys.stderr)
     
-    # Verify it's a Django project
+    # Verify Django project
     manage_py = kolokwa_connect_dir / 'manage.py'
     if not manage_py.exists():
         print(f"ERROR: manage.py not found at {manage_py}", file=sys.stderr)
-        
-        # Search for Django root
         search_dir = current_file.parent
         found = False
         for _ in range(5):
@@ -95,84 +86,61 @@ try:
             print("ERROR: Could not find Django project root!", file=sys.stderr)
             sys.exit(1)
     
-    print(f"\nDjango root verified: {kolokwa_connect_dir}", file=sys.stderr)
-    
-    # Clear sys.path and rebuild with actual case-sensitive paths
+    # Configure Python path
     original_path = sys.path.copy()
     sys.path.clear()
-    
-    # 1. Django project root - WITH ACTUAL CASE
     sys.path.append(str(kolokwa_connect_dir))
-    
-    # 2. MCP source directory
     sys.path.append(str(src_dir))
     
-    # 3. Add back standard library paths
     for path in original_path:
         path_lower = path.lower()
         if any(x in path_lower for x in ['python310', 'python3', 'site-packages', '.venv', 'dll', 'lib']):
             if path not in sys.path:
                 sys.path.append(path)
     
-    print(f"\nPython Version: {sys.version}", file=sys.stderr)
-    print(f"\nConfigured Python Path:", file=sys.stderr)
+    print(f"\nPython Path configured:", file=sys.stderr)
     for i, path in enumerate(sys.path[:6]):
         exists = "✓" if Path(path).exists() else "✗"
         print(f"  [{exists}] {i}: {path}", file=sys.stderr)
     
-    # Find Django settings module - check actual directory structure
+    # Find Django settings
     print(f"\nLooking for Django settings...", file=sys.stderr)
     settings_module = None
-    settings_path = None
     
-    # Look for directories containing settings.py
     for item in kolokwa_connect_dir.iterdir():
         if item.is_dir():
             settings_file = item / 'settings.py'
             if settings_file.exists():
-                # Use the ACTUAL directory name (with correct case)
                 actual_dirname = item.name
                 settings_module = f"{actual_dirname}.settings"
-                settings_path = settings_file
                 print(f"✓ Found settings module: {settings_module}", file=sys.stderr)
-                print(f"  at: {settings_path}", file=sys.stderr)
                 break
     
     if not settings_module:
         print("ERROR: Could not find Django settings.py!", file=sys.stderr)
-        print(f"\nSearched in: {kolokwa_connect_dir}", file=sys.stderr)
-        print("Contents:", file=sys.stderr)
-        for item in kolokwa_connect_dir.iterdir():
-            marker = "📁" if item.is_dir() else "📄"
-            print(f"  {marker} {item.name}", file=sys.stderr)
         sys.exit(1)
     
-    # Set Django settings with ACTUAL case
+    # Set environment
     os.environ['DJANGO_SETTINGS_MODULE'] = settings_module
     os.environ['MCP_TRANSPORT'] = 'http'
     
-    # Ensure SECRET_KEY is set for Django (use a default for build/inspection)
     if not os.environ.get('SECRET_KEY'):
-        # This is safe because it's only used during build/inspection, not in production runtime
-        os.environ['SECRET_KEY'] = 'django-insecure-build-time-key-for-inspection-only-not-used-in-production'
-        print("⚠ Using default SECRET_KEY for build/inspection phase", file=sys.stderr)
+        os.environ['SECRET_KEY'] = 'django-insecure-build-time-key-for-inspection-only'
+        print("⚠ Using default SECRET_KEY for build/inspection", file=sys.stderr)
     
-    print(f"\n✓ Django Settings Module: {settings_module}", file=sys.stderr)
-    print(f"✓ Transport: http", file=sys.stderr)
-    
-    # Import and setup Django
+    # Setup Django
     print("\nSetting up Django...", file=sys.stderr)
     import django
     django.setup()
     print("✓ Django setup complete", file=sys.stderr)
     
-    # Detect pre-flight check or inspection environment
+    # Detect environment
     IS_PREFLIGHT = os.getenv('FASTMCP_PREFLIGHT_CHECK') == 'true' or \
                    'preflight' in ' '.join(sys.argv).lower() or \
                    os.getenv('FASTMCP_CLOUD_URL') is not None
     
     if IS_PREFLIGHT:
-        print("⚠ Pre-flight/Cloud environment detected - using safe mode", file=sys.stderr)
+        print("⚠ Pre-flight/Cloud environment detected", file=sys.stderr)
     
     # Import server components
     print("\nImporting server modules...", file=sys.stderr)
@@ -183,15 +151,11 @@ try:
         metrics, logger, Config
     )
     
-    print("✓ Production config imported", file=sys.stderr)
-    
-    # Create MCP server
-    print("Creating MCP server...", file=sys.stderr)
+    # Create server
     mcp = create_server("kolokwa-dictionary")
     print("✓ MCP server created", file=sys.stderr)
     
     # Import Django models
-    print("Importing Django models...", file=sys.stderr)
     from dictionary.models import KoloquaEntry, WordCategory, TranslationHistory
     from users.models import User
     from django.db.models import Q, Count
@@ -199,43 +163,63 @@ try:
     from django.db.utils import OperationalError
     from asgiref.sync import sync_to_async
     import json
-    print("✓ Django models imported", file=sys.stderr)
     
-    # Helper function to check database availability
+    # IMPROVED: Better database availability check
     def check_database_available():
         """Check if database is available and has tables"""
-        if IS_PREFLIGHT:
-            return False
-        
+        # Allow database access in production even during preflight
+        # Only skip if explicitly told to or if database doesn't exist
         try:
             with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='dictionary_koloquaentry'"
-                )
-                return cursor.fetchone() is not None
+                # Check for both SQLite and PostgreSQL
+                db_engine = connection.settings_dict['ENGINE']
+                if 'sqlite' in db_engine:
+                    cursor.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name='dictionary_koloquaentry'"
+                    )
+                elif 'postgresql' in db_engine:
+                    cursor.execute(
+                        "SELECT tablename FROM pg_tables WHERE tablename='dictionary_koloquaentry'"
+                    )
+                else:
+                    # Generic check
+                    cursor.execute("SELECT 1")
+                
+                result = cursor.fetchone()
+                available = result is not None
+                if available:
+                    print(f"✓ Database available ({db_engine})", file=sys.stderr)
+                return available
         except Exception as e:
-            print(f"Database check failed: {e}", file=sys.stderr)
+            print(f"⚠ Database unavailable: {type(e).__name__}: {str(e)}", file=sys.stderr)
             return False
     
-    # Register resources and tools
-    print("Registering resources and tools...", file=sys.stderr)
+    # Check database at startup
+    DB_AVAILABLE = check_database_available()
     
+    # Register resources
     @mcp.resource("kolokwa://dictionary/stats")
     @handle_errors_sync
     def get_dictionary_stats() -> str:
         """Get overall statistics about the Kolokwa dictionary"""
         def compute_stats():
-            # Check if in pre-flight mode or database unavailable
-            if not check_database_available():
+            if not DB_AVAILABLE:
                 return {
                     "status": "healthy",
-                    "mode": "preflight" if IS_PREFLIGHT else "no_database",
-                    "message": "Server is running and ready to accept requests",
-                    "note": "Database statistics will be available when connected to production database"
+                    "mode": "limited",
+                    "database_available": False,
+                    "message": "Server is running. Database statistics unavailable.",
+                    "capabilities": [
+                        "health_check available",
+                        "search_dictionary available (demo mode)",
+                        "Database required for full functionality"
+                    ]
                 }
             
             try:
                 return {
+                    "status": "healthy",
+                    "database_available": True,
                     "total_entries": KoloquaEntry.objects.filter(status='verified').count(),
                     "pending_entries": KoloquaEntry.objects.filter(status='pending').count(),
                     "total_contributors": User.objects.filter(contributions_count__gt=0).count(),
@@ -243,13 +227,15 @@ try:
                     "phrases": KoloquaEntry.objects.filter(status='verified', entry_type='phrase').count(),
                 }
             except Exception as e:
+                logger.error(f"Stats error: {e}")
                 return {
-                    "error": "Database unavailable",
-                    "message": str(e),
-                    "note": "This is expected in demo/inspection environments"
+                    "status": "degraded",
+                    "database_available": False,
+                    "error": "Could not retrieve statistics",
+                    "message": str(e)
                 }
         
-        stats = get_cached_or_compute('dictionary_stats', compute_stats)
+        stats = get_cached_or_compute('dictionary_stats', compute_stats, ttl=60)
         return json.dumps(stats, indent=2)
     
     @mcp.tool()
@@ -261,17 +247,32 @@ try:
         Args:
             query: The search term to look for
             search_type: Type of search - "kolokwa", "english", or "all"
-            limit: Maximum number of results to return (default: 10)
+            limit: Maximum number of results to return (default: 10, max: 50)
             
         Returns:
             JSON string with search results
         """
+        # Validate inputs
+        if not query or not query.strip():
+            return json.dumps({
+                "error": "Invalid query",
+                "message": "Query cannot be empty",
+                "query": query
+            }, indent=2)
+        
+        if search_type not in ["kolokwa", "english", "all"]:
+            return json.dumps({
+                "error": "Invalid search_type",
+                "message": "search_type must be 'kolokwa', 'english', or 'all'",
+                "query": query
+            }, indent=2)
+        
+        limit = min(max(1, limit), Config.MAX_SEARCH_RESULTS)
         
         @sync_to_async
         def _search():
-            # Check if database is available
-            if not check_database_available():
-                return []
+            if not DB_AVAILABLE:
+                return None  # Signal database unavailable
             
             try:
                 if search_type == "kolokwa":
@@ -289,7 +290,7 @@ try:
                         Q(english_translation__icontains=query)
                     )
                 
-                results = results.distinct()[:min(limit, Config.MAX_SEARCH_RESULTS)]
+                results = results.distinct()[:limit]
                 
                 entries = []
                 for entry in results:
@@ -298,30 +299,45 @@ try:
                         "kolokwa": entry.koloqua_text,
                         "english": entry.english_translation,
                         "entry_type": entry.entry_type,
+                        "example_kolokwa": entry.example_sentence_koloqua if hasattr(entry, 'example_sentence_koloqua') else None,
+                        "example_english": entry.example_sentence_english if hasattr(entry, 'example_sentence_english') else None,
                     })
                 return entries
                 
             except Exception as e:
-                print(f"Search error: {e}", file=sys.stderr)
-                return []
+                logger.error(f"Search error: {type(e).__name__}: {str(e)}")
+                raise
         
-        entries = await _search()
-        
-        if not entries:
+        try:
+            entries = await _search()
+            
+            if entries is None:
+                return json.dumps({
+                    "status": "unavailable",
+                    "query": query,
+                    "search_type": search_type,
+                    "results": 0,
+                    "entries": [],
+                    "message": "Database not available. Search requires database connection.",
+                    "suggestion": "Check database configuration and ensure tables are created."
+                }, indent=2)
+            
             return json.dumps({
+                "status": "success",
                 "query": query,
                 "search_type": search_type,
-                "results": 0,
-                "entries": [],
-                "note": "No results found. Database may need initialization or no matching entries exist."
+                "results": len(entries),
+                "entries": entries,
+                "message": f"Found {len(entries)} result(s)" if entries else "No matching entries found"
             }, indent=2)
-        
-        return json.dumps({
-            "query": query,
-            "search_type": search_type,
-            "results": len(entries),
-            "entries": entries
-        }, indent=2)
+            
+        except Exception as e:
+            return json.dumps({
+                "status": "error",
+                "query": query,
+                "error": str(e),
+                "message": "An error occurred during search"
+            }, indent=2)
     
     @mcp.tool()
     def health_check() -> str:
@@ -331,54 +347,43 @@ try:
         health_info = {
             "status": "healthy",
             "server": "kolokwa-dictionary",
+            "version": "1.0.0",
             "transport": "http",
             "database_available": db_available,
-            "environment": "preflight" if IS_PREFLIGHT else "production",
-            "message": "MCP server is running and ready to accept requests"
+            "environment": Config.ENVIRONMENT,
+            "capabilities": {
+                "search": db_available,
+                "statistics": db_available,
+                "health_check": True
+            },
+            "message": "Dictionary MCP server is operational"
         }
         
         if not db_available:
-            health_info["note"] = "Database not available - using safe mode"
+            health_info["status"] = "degraded"
+            health_info["warning"] = "Database unavailable - limited functionality"
         
         return json.dumps(health_info, indent=2)
     
-    print("✓ Registration complete", file=sys.stderr)
+    print("✓ All tools and resources registered", file=sys.stderr)
     print_startup_info()
     
-    # Check if we're being inspected (this check happens at module level)
-    # The 'fastmcp inspect' command will import this module to get the mcp object
-    is_inspection = 'fastmcp' in sys.argv[0].lower() or 'inspect' in ' '.join(sys.argv).lower()
-    
-    if is_inspection:
-        # During inspection, just expose the mcp object
-        print("\n✓ MCP server initialized and ready for inspection", file=sys.stderr)
-    else:
-        # This is not inspection - it's actual runtime
-        # The FastMCP cloud runtime will handle starting the server
-        # We just need to expose the mcp object
-        print("\n✓ MCP server initialized and ready for runtime", file=sys.stderr)
-    
-    # NOTE: We do NOT call mcp.run() here anymore!
-    # FastMCP Cloud will handle running the server when it imports this module
-    # The mcp object is exposed at module level for FastMCP to use
-    
-    # For FastMCP Cloud compatibility, also expose as 'app'
+    # Expose server instance
     app = mcp
+    
+    if DB_AVAILABLE:
+        print("\n✅ Server ready with full database access", file=sys.stderr)
+    else:
+        print("\n⚠️  Server ready in limited mode (no database)", file=sys.stderr)
+    
+    print("=" * 60, file=sys.stderr)
     
 except ImportError as e:
     print("\n" + "=" * 60, file=sys.stderr)
     print("❌ IMPORT ERROR", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     print(f"Module: {e}", file=sys.stderr)
-    print("\nTraceback:", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
-    print("\nWorking Directory:", file=sys.stderr)
-    print(f"  {os.getcwd()}", file=sys.stderr)
-    print("\nPython Path (first 10):", file=sys.stderr)
-    for i, path in enumerate(sys.path[:10]):
-        exists = "✓" if Path(path).exists() else "✗"
-        print(f"  [{exists}] {i}: {path}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
     sys.exit(1)
     
 except Exception as e:
@@ -387,7 +392,5 @@ except Exception as e:
     print("=" * 60, file=sys.stderr)
     print(f"Type: {type(e).__name__}", file=sys.stderr)
     print(f"Message: {str(e)}", file=sys.stderr)
-    print("\nTraceback:", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
     sys.exit(1)

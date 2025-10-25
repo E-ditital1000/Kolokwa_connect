@@ -22,7 +22,12 @@ import cloudinary.api
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = config('SECRET_KEY')
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
+
+# Safe defaults for build/inspection
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-default-for-build-only')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -114,16 +119,31 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Kolokwa_connect.wsgi.application'
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': os.getenv('DATABASE_NAME', str(BASE_DIR / 'db.sqlite3')),
-        'USER': os.getenv('DATABASE_USER', ''),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
-        'HOST': os.getenv('DATABASE_HOST', ''),
-        'PORT': os.getenv('DATABASE_PORT', ''),
+
+# Detect if running in FastMCP Cloud environment
+IS_FASTMCP_CLOUD = os.getenv('FASTMCP_CLOUD_URL') is not None
+
+# Database configuration
+if IS_FASTMCP_CLOUD:
+    # Use SQLite for FastMCP Cloud (read-only MCP server)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': '/tmp/db.sqlite3',
+        }
     }
-}
+else:
+    # Use PostgreSQL for main app
+    DATABASES = {
+        'default': {
+            'ENGINE': os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3'),
+            'NAME': os.getenv('DATABASE_NAME', str(BASE_DIR / 'db.sqlite3')),
+            'USER': os.getenv('DATABASE_USER', ''),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
+            'HOST': os.getenv('DATABASE_HOST', ''),
+            'PORT': os.getenv('DATABASE_PORT', ''),
+        }
+    }
 
 
 # Custom User Model

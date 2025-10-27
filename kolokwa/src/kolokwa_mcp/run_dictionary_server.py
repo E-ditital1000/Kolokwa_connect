@@ -3,7 +3,6 @@
 import os
 import sys
 import traceback
-import asyncio
 from pathlib import Path
 
 # Redirect stdout to stderr for logging
@@ -165,16 +164,48 @@ try:
     from asgiref.sync import sync_to_async
     import json
     
-    # FIXED: Async-safe database availability check
-    async def check_database_available():
-        """Check if database is available and has tables - ASYNC SAFE"""
+    # FIXED: Synchronous database check that's safe at module level
+    def check_database_available_sync():
+        """Check if database is available and has tables - SYNC version for startup"""
+        try:
+            # Use a simple test query that doesn't require async
+            from django.db import connection
+            with connection.cursor() as cursor:
+                db_engine = connection.settings_dict['ENGINE']
+                
+                # Use actual table name 'koloqua_entries' from models.py Meta.db_table
+                if 'sqlite' in db_engine:
+                    cursor.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name='koloqua_entries'"
+                    )
+                elif 'postgresql' in db_engine:
+                    cursor.execute(
+                        "SELECT tablename FROM pg_tables WHERE tablename='koloqua_entries'"
+                    )
+                else:
+                    cursor.execute("SELECT 1")
+                
+                result = cursor.fetchone()
+                available = result is not None
+                if available:
+                    print(f"✓ Database available ({db_engine})", file=sys.stderr)
+                else:
+                    print(f"⚠ Table 'koloqua_entries' not found in database", file=sys.stderr)
+                return available
+        except Exception as e:
+            print(f"⚠ Database check at startup: {type(e).__name__}", file=sys.stderr)
+            # Return True to allow async checks later - don't fail at import time
+            return True
+    
+    # Async version for runtime checks
+    async def check_database_available_async():
+        """Check if database is available and has tables - ASYNC version for runtime"""
         @sync_to_async
-        def _check_db_sync():
+        def _check():
             try:
                 with connection.cursor() as cursor:
                     db_engine = connection.settings_dict['ENGINE']
                     
-                    # Use actual table name 'koloqua_entries' from models.py Meta.db_table
                     if 'sqlite' in db_engine:
                         cursor.execute(
                             "SELECT name FROM sqlite_master WHERE type='table' AND name='koloqua_entries'"
@@ -187,20 +218,15 @@ try:
                         cursor.execute("SELECT 1")
                     
                     result = cursor.fetchone()
-                    available = result is not None
-                    if available:
-                        print(f"✓ Database available ({db_engine})", file=sys.stderr)
-                    else:
-                        print(f"⚠ Table 'koloqua_entries' not found in database", file=sys.stderr)
-                    return available
+                    return result is not None
             except Exception as e:
-                print(f"⚠ Database unavailable: {type(e).__name__}: {str(e)}", file=sys.stderr)
+                logger.warning(f"Database check failed: {type(e).__name__}: {str(e)}")
                 return False
         
-        return await _check_db_sync()
+        return await _check()
     
-    # Check database at startup - ASYNC SAFE
-    DB_AVAILABLE = asyncio.run(check_database_available())
+    # Check database at startup - SYNC version, safe at module level
+    DB_AVAILABLE = check_database_available_sync()
     
     # Register resources
     @mcp.resource("kolokwa://dictionary/stats")
@@ -274,9 +300,9 @@ try:
         
         limit = min(max(1, limit), Config.MAX_SEARCH_RESULTS)
         
-        # Runtime database check
+        # Runtime database check using async version
         try:
-            is_db_ready = await check_database_available() if DB_AVAILABLE else False
+            is_db_ready = await check_database_available_async()
         except Exception as e:
             logger.warning(f"Runtime DB check failed: {e}")
             is_db_ready = False
@@ -355,9 +381,9 @@ try:
     @handle_errors
     async def health_check() -> str:
         """Check if the MCP server is running and healthy"""
-        # Runtime database check
+        # Runtime database check using async version
         try:
-            db_available = await check_database_available()
+            db_available = await check_database_available_async()
         except Exception as e:
             logger.warning(f"Health check DB verification failed: {e}")
             db_available = False
@@ -365,7 +391,7 @@ try:
         health_info = {
             "status": "healthy",
             "server": "kolokwa-dictionary",
-            "version": "1.0.1",
+            "version": "1.0.2",
             "transport": "http",
             "database_available": db_available,
             "environment": Config.ENVIRONMENT,

@@ -3,6 +3,7 @@
 import os
 import sys
 import traceback
+import asyncio
 from pathlib import Path
 
 # Redirect stdout to stderr for logging
@@ -164,38 +165,42 @@ try:
     from asgiref.sync import sync_to_async
     import json
     
-    # IMPROVED: Better database availability check
-    def check_database_available():
-        """Check if database is available and has tables"""
-        # Allow database access in production even during preflight
-        # Only skip if explicitly told to or if database doesn't exist
-        try:
-            with connection.cursor() as cursor:
-                # Check for both SQLite and PostgreSQL
-                db_engine = connection.settings_dict['ENGINE']
-                if 'sqlite' in db_engine:
-                    cursor.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='dictionary_koloquaentry'"
-                    )
-                elif 'postgresql' in db_engine:
-                    cursor.execute(
-                        "SELECT tablename FROM pg_tables WHERE tablename='dictionary_koloquaentry'"
-                    )
-                else:
-                    # Generic check
-                    cursor.execute("SELECT 1")
-                
-                result = cursor.fetchone()
-                available = result is not None
-                if available:
-                    print(f"✓ Database available ({db_engine})", file=sys.stderr)
-                return available
-        except Exception as e:
-            print(f"⚠ Database unavailable: {type(e).__name__}: {str(e)}", file=sys.stderr)
-            return False
+    # FIXED: Async-safe database availability check
+    async def check_database_available():
+        """Check if database is available and has tables - ASYNC SAFE"""
+        @sync_to_async
+        def _check_db_sync():
+            try:
+                with connection.cursor() as cursor:
+                    db_engine = connection.settings_dict['ENGINE']
+                    
+                    # Use actual table name 'koloqua_entries' from models.py Meta.db_table
+                    if 'sqlite' in db_engine:
+                        cursor.execute(
+                            "SELECT name FROM sqlite_master WHERE type='table' AND name='koloqua_entries'"
+                        )
+                    elif 'postgresql' in db_engine:
+                        cursor.execute(
+                            "SELECT tablename FROM pg_tables WHERE tablename='koloqua_entries'"
+                        )
+                    else:
+                        cursor.execute("SELECT 1")
+                    
+                    result = cursor.fetchone()
+                    available = result is not None
+                    if available:
+                        print(f"✓ Database available ({db_engine})", file=sys.stderr)
+                    else:
+                        print(f"⚠ Table 'koloqua_entries' not found in database", file=sys.stderr)
+                    return available
+            except Exception as e:
+                print(f"⚠ Database unavailable: {type(e).__name__}: {str(e)}", file=sys.stderr)
+                return False
+        
+        return await _check_db_sync()
     
-    # Check database at startup
-    DB_AVAILABLE = check_database_available()
+    # Check database at startup - ASYNC SAFE
+    DB_AVAILABLE = asyncio.run(check_database_available())
     
     # Register resources
     @mcp.resource("kolokwa://dictionary/stats")
@@ -269,9 +274,16 @@ try:
         
         limit = min(max(1, limit), Config.MAX_SEARCH_RESULTS)
         
+        # Runtime database check
+        try:
+            is_db_ready = await check_database_available() if DB_AVAILABLE else False
+        except Exception as e:
+            logger.warning(f"Runtime DB check failed: {e}")
+            is_db_ready = False
+        
         @sync_to_async
         def _search():
-            if not DB_AVAILABLE:
+            if not is_db_ready:
                 return None  # Signal database unavailable
             
             try:
@@ -340,14 +352,20 @@ try:
             }, indent=2)
     
     @mcp.tool()
-    def health_check() -> str:
+    @handle_errors
+    async def health_check() -> str:
         """Check if the MCP server is running and healthy"""
-        db_available = check_database_available()
+        # Runtime database check
+        try:
+            db_available = await check_database_available()
+        except Exception as e:
+            logger.warning(f"Health check DB verification failed: {e}")
+            db_available = False
         
         health_info = {
             "status": "healthy",
             "server": "kolokwa-dictionary",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "transport": "http",
             "database_available": db_available,
             "environment": Config.ENVIRONMENT,

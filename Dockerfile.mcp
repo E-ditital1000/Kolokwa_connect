@@ -1,4 +1,4 @@
-# Dockerfile.mcp - MCP Servers with Proper Module Resolution
+# Dockerfile.mcp - MCP Servers with Proper ASGI Configuration
 # Lightweight image for dictionary and translation MCP servers
 
 FROM python:3.10-slim AS builder
@@ -15,10 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install only MCP-required dependencies
+# Install MCP dependencies including Uvicorn
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    pip install uvicorn[standard]>=0.27.0
 
 # ============================================================================
 # Runtime Stage
@@ -44,8 +45,8 @@ RUN useradd -m -u 1000 appuser && \
 WORKDIR /app
 
 # ============================================================================
-# CRITICAL: Copy project structure correctly
-# Your structure appears to be:
+# Copy project structure correctly
+# Your structure:
 # /kolokwa_connect/
 #   ├── manage.py
 #   ├── Kolokwa_connect/
@@ -72,18 +73,21 @@ RUN touch ./users/__init__.py && \
     touch ./nl_interact/__init__.py && \
     touch ./Kolokwa_connect/__init__.py
 
-# PYTHONPATH must be set to /app (project root where manage.py is)
-# This allows imports like "from users.models import User"
-ENV PYTHONPATH="/app"
+# CRITICAL: PYTHONPATH must include both Django root and MCP source
+# /app - for Django imports (users.models, dictionary.models, etc.)
+# /app/kolokwa/src - for MCP imports (kolokwa_mcp.*)
+ENV PYTHONPATH="/app:/app/kolokwa/src"
 
 USER appuser
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${MCP_HTTP_PORT:-8000}/health || exit 1
 
-# Create startup script with proper initialization order
+# ============================================================================
+# Create startup script with proper ASGI server configuration
+# ============================================================================
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
@@ -93,6 +97,20 @@ echo "===================================="\n\
 echo "Current directory: $(pwd)"\n\
 echo "Python path: $(which python)"\n\
 echo "PYTHONPATH: $PYTHONPATH"\n\
+echo "MCP_SERVER_NAME: ${MCP_SERVER_NAME}"\n\
+echo "MCP_HTTP_PORT: ${MCP_HTTP_PORT:-8000}"\n\
+echo ""\n\
+\n\
+# Determine which server to run based on container command\n\
+if [ -n "$MCP_SERVER_SCRIPT" ]; then\n\
+    SERVER_MODULE="$MCP_SERVER_SCRIPT"\n\
+elif echo "$0" | grep -q "translator"; then\n\
+    SERVER_MODULE="kolokwa_mcp.run_translator_server"\n\
+else\n\
+    SERVER_MODULE="kolokwa_mcp.run_dictionary_server"\n\
+fi\n\
+\n\
+echo "▶ Server module: $SERVER_MODULE"\n\
 echo ""\n\
 \n\
 # Run migrations FIRST (required before loading models)\n\
@@ -107,21 +125,36 @@ python manage.py createcachetable 2>/dev/null || {\n\
     echo "✓ Cache table ready"\n\
 }\n\
 \n\
-# NOW verify Django setup (after migrations)\n\
+# Verify Django setup (after migrations)\n\
 echo "▶ Verifying Django setup..."\n\
 python -c "import django; django.setup(); print(\"✓ Django loaded\")" || {\n\
     echo "✗ Django setup failed"\n\
     exit 1\n\
 }\n\
 \n\
+# Verify ASGI app is importable\n\
+echo "▶ Verifying ASGI application..."\n\
+python -c "from ${SERVER_MODULE} import app; print(f\"✓ ASGI app: {type(app).__name__}\")" || {\n\
+    echo "✗ ASGI app import failed"\n\
+    exit 1\n\
+}\n\
+\n\
 echo ""\n\
 echo "✓ All initialization complete"\n\
-echo "▶ Starting MCP server..."\n\
+echo "▶ Starting Uvicorn ASGI server..."\n\
 echo "===================================="\n\
 echo ""\n\
 \n\
-# Start the MCP server\n\
-exec python /app/kolokwa/src/kolokwa_mcp/run_dictionary_server.py\n' > /app/start-mcp.sh && \
+# Start the ASGI server with Uvicorn\n\
+exec uvicorn \\\n\
+  --app-dir /app/kolokwa/src \\\n\
+  --host 0.0.0.0 \\\n\
+  --port ${MCP_HTTP_PORT:-8000} \\\n\
+  --log-level ${LOG_LEVEL:-info} \\\n\
+  --access-log \\\n\
+  --timeout-keep-alive 30 \\\n\
+  --timeout-graceful-shutdown 10 \\\n\
+  ${SERVER_MODULE}:app\n' > /app/start-mcp.sh && \
     chmod +x /app/start-mcp.sh
 
 CMD ["/app/start-mcp.sh"]

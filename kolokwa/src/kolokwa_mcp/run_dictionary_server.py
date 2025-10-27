@@ -44,6 +44,9 @@ def get_actual_case_path(path: Path) -> Path:
     
     return result
 
+# Module-level variable for ASGI server
+app = None
+
 try:
     print("=" * 60, file=sys.stderr)
     print("KOLOKWA DICTIONARY SERVER - STARTUP (HTTP)", file=sys.stderr)
@@ -266,33 +269,32 @@ try:
     print("✓ All tools and resources registered", file=sys.stderr)
     print_startup_info()
     
-    # CRITICAL FIX: Get the actual Starlette/FastAPI app from FastMCP
-    print(f"\n🔍 Configuring ASGI application...", file=sys.stderr)
+    # CRITICAL: Extract ASGI application for Uvicorn/Gunicorn
+    print(f"\n🔍 Extracting ASGI application...", file=sys.stderr)
     
-    # FastMCP wraps a Starlette app - we need to get that
-    # The FastMCP class should have the ASGI app as an attribute
+    # FastMCP should have an internal ASGI app
     if hasattr(mcp, '_app') and mcp._app is not None:
         app = mcp._app
-        print(f"✓ Using mcp._app (internal Starlette app): {type(app).__name__}", file=sys.stderr)
+        print(f"✓ Extracted mcp._app: {type(app).__name__}", file=sys.stderr)
     elif hasattr(mcp, 'app') and mcp.app is not None:
         app = mcp.app
-        print(f"✓ Using mcp.app: {type(app).__name__}", file=sys.stderr)
-    else:
-        # If FastMCP itself is callable, use it directly
-        # FastMCP should implement __call__ for ASGI
-        print(f"✓ Using FastMCP instance directly as ASGI app", file=sys.stderr)
+        print(f"✓ Extracted mcp.app: {type(app).__name__}", file=sys.stderr)
+    elif callable(mcp):
+        # FastMCP itself is ASGI-compatible
         app = mcp
+        print(f"✓ Using FastMCP instance directly", file=sys.stderr)
+    else:
+        print(f"❌ ERROR: Could not extract ASGI app from FastMCP!", file=sys.stderr)
+        raise RuntimeError("No ASGI application found")
     
     # Verify it's callable
     if not callable(app):
         print(f"❌ ERROR: App is not callable!", file=sys.stderr)
         print(f"   Type: {type(app)}", file=sys.stderr)
-        print(f"   Dir: {[x for x in dir(app) if not x.startswith('_')][:10]}", file=sys.stderr)
         raise RuntimeError("ASGI app is not callable")
     
-    print(f"✓ App is callable (ASGI-compatible)", file=sys.stderr)
-    print(f"✓ ASGI app ready: {type(app).__name__}", file=sys.stderr)
-    print("✅ Server ready (database checks deferred)", file=sys.stderr)
+    print(f"✅ ASGI app ready: {type(app).__name__}", file=sys.stderr)
+    print("✅ Server initialized successfully", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
 except ImportError as e:
@@ -311,3 +313,21 @@ except Exception as e:
     print(f"Message: {str(e)}", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
     sys.exit(1)
+
+# CRITICAL: Module-level export for ASGI servers
+# This must be OUTSIDE the try-except block so it's always accessible
+# Uvicorn/Gunicorn will import this module and look for 'app'
+if app is None:
+    print("⚠ WARNING: App not initialized, using placeholder", file=sys.stderr)
+    # Create a minimal placeholder that returns an error
+    async def placeholder_app(scope, receive, send):
+        await send({
+            'type': 'http.response.start',
+            'status': 503,
+            'headers': [[b'content-type', b'text/plain']],
+        })
+        await send({
+            'type': 'http.response.body',
+            'body': b'Server initialization failed',
+        })
+    app = placeholder_app

@@ -8,13 +8,13 @@ from pathlib import Path
 # Redirect stdout to stderr for logging
 sys.stdout = sys.stderr
 
+# Module-level variable for ASGI server
+app = None
+
 try:
     print("=" * 60, file=sys.stderr)
     print("KOLOKWA TRANSLATION SERVER - STARTUP (HTTP)", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
-    
-    # Get the project root directory - USE CASE-SENSITIVE PATH RESOLUTION
-    current_file = Path(__file__).resolve()
     
     def get_actual_case_path(path: Path) -> Path:
         """Get the actual case-sensitive path on Windows"""
@@ -53,7 +53,7 @@ try:
     
     # Setup paths
     print(f"Resolving case-sensitive paths...", file=sys.stderr)
-    current_file = get_actual_case_path(current_file)
+    current_file = get_actual_case_path(Path(__file__).resolve())
     
     mcp_dir = current_file.parent
     src_dir = mcp_dir.parent
@@ -86,12 +86,12 @@ try:
     # Configure Python path
     original_path = sys.path.copy()
     sys.path.clear()
-    sys.path.append(str(kolokwa_connect_dir))
-    sys.path.append(str(src_dir))
+    sys.path.insert(0, str(kolokwa_connect_dir))
+    sys.path.insert(1, str(src_dir))
     
     for path in original_path:
         path_lower = path.lower()
-        if any(x in path_lower for x in ['python310', 'python3', 'site-packages', '.venv', 'dll', 'lib']):
+        if any(x in path_lower for x in ['python310', 'python311', 'python312', 'python3', 'site-packages', '.venv', 'dll', 'lib']):
             if path not in sys.path:
                 sys.path.append(path)
     
@@ -150,6 +150,7 @@ try:
     # Create server
     mcp = create_server("kolokwa-translator")
     print("✓ MCP server created", file=sys.stderr)
+    print(f"✓ Server type: {type(mcp).__name__}", file=sys.stderr)
     
     # Import Django models
     print("Importing Django models...", file=sys.stderr)
@@ -160,46 +161,31 @@ try:
     import json
     print("✓ Django models imported", file=sys.stderr)
     
-    # FIXED: Check for actual table name from models.py Meta.db_table
-    def check_database_available():
-        """Check if database is available and has tables"""
-        try:
-            with connection.cursor() as cursor:
-                db_engine = connection.settings_dict['ENGINE']
-                
-                # FIXED: Use actual table name 'koloqua_entries' not 'dictionary_koloquaentry'
-                if 'sqlite' in db_engine:
-                    cursor.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='koloqua_entries'"
-                    )
-                elif 'postgresql' in db_engine:
-                    cursor.execute(
-                        "SELECT tablename FROM pg_tables WHERE tablename='koloqua_entries'"
-                    )
-                else:
-                    cursor.execute("SELECT 1")
-                
-                result = cursor.fetchone()
-                available = result is not None
-                if available:
-                    print(f"✓ Database available for translation ({db_engine})", file=sys.stderr)
-                else:
-                    print(f"⚠ Table 'koloqua_entries' not found in database", file=sys.stderr)
-                return available
-        except Exception as e:
-            print(f"⚠ Database unavailable: {type(e).__name__}", file=sys.stderr)
-            return False
-    
-    # Check database at startup
-    DB_AVAILABLE = check_database_available()
+    print("⚠ Deferring database check to first request (fast startup)", file=sys.stderr)
     
     # Helper functions
+    async def check_database_available():
+        """Check if database is available"""
+        @sync_to_async
+        def _check():
+            try:
+                with connection.cursor() as cursor:
+                    db_engine = connection.settings_dict['ENGINE']
+                    if 'sqlite' in db_engine:
+                        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='koloqua_entries'")
+                    elif 'postgresql' in db_engine:
+                        cursor.execute("SELECT tablename FROM pg_tables WHERE tablename='koloqua_entries'")
+                    else:
+                        cursor.execute("SELECT 1")
+                    return cursor.fetchone() is not None
+            except Exception as e:
+                logger.debug(f"Database check: {type(e).__name__}")
+                return False
+        return await _check()
+    
     @sync_to_async
     def _find_relevant_entries_sync(text: str, search_english: bool, limit: int):
         """Find dictionary entries relevant to the given text."""
-        if not DB_AVAILABLE:
-            return None  # Signal unavailable
-        
         try:
             words = text.lower().split()
             
@@ -223,9 +209,9 @@ try:
             logger.error(f"Error finding entries: {e}")
             return []
     
-    def format_dictionary_context(entries: list) -> str:
+    def format_dictionary_context(entries: list, db_available: bool = True) -> str:
         """Format dictionary entries as context for translation."""
-        if entries is None:
+        if not db_available:
             return "Database unavailable - no dictionary context available."
         
         if not entries:
@@ -257,7 +243,10 @@ try:
         if not text or not text.strip():
             return "Error: Translation text cannot be empty."
         
-        if not DB_AVAILABLE:
+        import asyncio
+        db_available = asyncio.run(check_database_available())
+        
+        if not db_available:
             return f"""Translation Unavailable
 
 ⚠️ Database not available - cannot provide translation context.
@@ -273,10 +262,9 @@ Please ensure:
 
 Translation cannot proceed without database access."""
         
-        import asyncio
         entries = asyncio.run(_find_relevant_entries_sync(text, search_english=True, limit=5))
         
-        if entries is None or len(entries) == 0:
+        if not entries:
             return f"""Translation Context Not Found
 
 No dictionary entries found for: "{text}"
@@ -285,7 +273,7 @@ The Kolokwa dictionary does not contain relevant entries for the words in your t
 
 Suggestion: Check if the words exist in the dictionary using the search_dictionary tool, or contribute new entries to the dictionary."""
         
-        context_str = format_dictionary_context(entries)
+        context_str = format_dictionary_context(entries, db_available)
         
         return f"""Translate English to Kolokwa using dictionary context.
 
@@ -313,7 +301,10 @@ Instructions:
         if not text or not text.strip():
             return "Error: Translation text cannot be empty."
         
-        if not DB_AVAILABLE:
+        import asyncio
+        db_available = asyncio.run(check_database_available())
+        
+        if not db_available:
             return f"""Translation Unavailable
 
 ⚠️ Database not available - cannot provide translation context.
@@ -329,10 +320,9 @@ Please ensure:
 
 Translation cannot proceed without database access."""
         
-        import asyncio
         entries = asyncio.run(_find_relevant_entries_sync(text, search_english=False, limit=5))
         
-        if entries is None or len(entries) == 0:
+        if not entries:
             return f"""Translation Context Not Found
 
 No dictionary entries found for: "{text}"
@@ -341,7 +331,7 @@ The Kolokwa dictionary does not contain relevant entries for the words in your t
 
 Suggestion: Check if the words exist in the dictionary using the search_dictionary tool, or contribute new entries to the dictionary."""
         
-        context_str = format_dictionary_context(entries)
+        context_str = format_dictionary_context(entries, db_available)
         
         return f"""Translate Kolokwa to English using dictionary context.
 
@@ -387,7 +377,9 @@ Instructions:
                 "message": "Language must be 'kolokwa' or 'english'"
             }, indent=2)
         
-        if not DB_AVAILABLE:
+        db_available = await check_database_available()
+        
+        if not db_available:
             return json.dumps({
                 "status": "unavailable",
                 "text": text,
@@ -401,15 +393,7 @@ Instructions:
         search_english = (language == "english")
         entries = await _find_relevant_entries_sync(text, search_english, 10)
         
-        if entries is None:
-            return json.dumps({
-                "status": "error",
-                "text": text,
-                "language": language,
-                "message": "Error accessing database"
-            }, indent=2)
-        
-        context_str = format_dictionary_context(entries)
+        context_str = format_dictionary_context(entries, db_available)
         
         entry_list = []
         for entry in entries:
@@ -430,12 +414,13 @@ Instructions:
         }, indent=2)
     
     @mcp.tool()
-    def health_check() -> str:
+    @handle_errors
+    async def health_check() -> str:
         """Check if the translation MCP server is running and healthy"""
-        db_available = check_database_available()
+        db_available = await check_database_available()
         
         health_info = {
-            "status": "healthy" if db_available else "unavailable",
+            "status": "healthy" if db_available else "degraded",
             "server": "kolokwa-translator",
             "version": "1.0.0",
             "transport": "http",
@@ -451,7 +436,6 @@ Instructions:
         }
         
         if not db_available:
-            health_info["error"] = "Database unavailable"
             health_info["warning"] = "All translation features require database access"
             health_info["note"] = "This server provides dictionary-based translations only"
         
@@ -461,15 +445,11 @@ Instructions:
     print("✓ All prompts and tools registered", file=sys.stderr)
     print_startup_info()
     
-    # Expose server instance
-    app = mcp
-    
-    if DB_AVAILABLE:
-        print("\n✅ Server ready with full translation context", file=sys.stderr)
-    else:
-        print("\n❌ Server ready but UNAVAILABLE - database required for translations", file=sys.stderr)
-        print("   Translation features will return errors until database is connected", file=sys.stderr)
-    
+    # Extract the ASGI application from FastMCP
+    print(f"\n🔍 Setting up ASGI application...", file=sys.stderr)
+    app = mcp.http_app
+    print(f"✅ ASGI app ready: {type(app).__name__}", file=sys.stderr)
+    print("✅ Server initialized successfully", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
 except ImportError as e:
@@ -477,15 +457,7 @@ except ImportError as e:
     print("❌ IMPORT ERROR", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     print(f"Module: {e}", file=sys.stderr)
-    print("\nTraceback:", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
-    print("\nWorking Directory:", file=sys.stderr)
-    print(f"  {os.getcwd()}", file=sys.stderr)
-    print("\nPython Path (first 10):", file=sys.stderr)
-    for i, path in enumerate(sys.path[:10]):
-        exists = "✓" if Path(path).exists() else "✗"
-        print(f"  [{exists}] {i}: {path}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
     sys.exit(1)
     
 except Exception as e:
@@ -494,7 +466,7 @@ except Exception as e:
     print("=" * 60, file=sys.stderr)
     print(f"Type: {type(e).__name__}", file=sys.stderr)
     print(f"Message: {str(e)}", file=sys.stderr)
-    print("\nTraceback:", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
     sys.exit(1)
+
+    

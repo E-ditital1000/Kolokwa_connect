@@ -131,14 +131,6 @@ try:
     django.setup()
     print("✓ Django setup complete", file=sys.stderr)
     
-    # Detect environment
-    IS_PREFLIGHT = os.getenv('FASTMCP_PREFLIGHT_CHECK') == 'true' or \
-                   'preflight' in ' '.join(sys.argv).lower() or \
-                   os.getenv('FASTMCP_CLOUD_URL') is not None
-    
-    if IS_PREFLIGHT:
-        print("⚠ Pre-flight/Cloud environment detected", file=sys.stderr)
-    
     # Import server components
     print("\nImporting server modules...", file=sys.stderr)
     from kolokwa_mcp.production_config import (
@@ -152,7 +144,6 @@ try:
     mcp = create_server("kolokwa-dictionary")
     print("✓ MCP server created", file=sys.stderr)
     print(f"✓ Server type: {type(mcp).__name__}", file=sys.stderr)
-    print(f"✓ Server module: {type(mcp).__module__}", file=sys.stderr)
     
     # Import Django models
     from dictionary.models import KoloquaEntry, WordCategory, TranslationHistory
@@ -269,29 +260,11 @@ try:
     print("✓ All tools and resources registered", file=sys.stderr)
     print_startup_info()
     
-    # CRITICAL: Extract ASGI application for Uvicorn/Gunicorn
-    print(f"\n🔍 Extracting ASGI application...", file=sys.stderr)
+    # Extract the correct ASGI application from FastMCP
+    print(f"\n🔍 Setting up ASGI application...", file=sys.stderr)
     
-    # FastMCP should have an internal ASGI app
-    if hasattr(mcp, '_app') and mcp._app is not None:
-        app = mcp._app
-        print(f"✓ Extracted mcp._app: {type(app).__name__}", file=sys.stderr)
-    elif hasattr(mcp, 'app') and mcp.app is not None:
-        app = mcp.app
-        print(f"✓ Extracted mcp.app: {type(app).__name__}", file=sys.stderr)
-    elif callable(mcp):
-        # FastMCP itself is ASGI-compatible
-        app = mcp
-        print(f"✓ Using FastMCP instance directly", file=sys.stderr)
-    else:
-        print(f"❌ ERROR: Could not extract ASGI app from FastMCP!", file=sys.stderr)
-        raise RuntimeError("No ASGI application found")
-    
-    # Verify it's callable
-    if not callable(app):
-        print(f"❌ ERROR: App is not callable!", file=sys.stderr)
-        print(f"   Type: {type(app)}", file=sys.stderr)
-        raise RuntimeError("ASGI app is not callable")
+    # FastMCP exposes http_app for HTTP transport
+    app = mcp.http_app
     
     print(f"✅ ASGI app ready: {type(app).__name__}", file=sys.stderr)
     print("✅ Server initialized successfully", file=sys.stderr)
@@ -313,21 +286,3 @@ except Exception as e:
     print(f"Message: {str(e)}", file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
     sys.exit(1)
-
-# CRITICAL: Module-level export for ASGI servers
-# This must be OUTSIDE the try-except block so it's always accessible
-# Uvicorn/Gunicorn will import this module and look for 'app'
-if app is None:
-    print("⚠ WARNING: App not initialized, using placeholder", file=sys.stderr)
-    # Create a minimal placeholder that returns an error
-    async def placeholder_app(scope, receive, send):
-        await send({
-            'type': 'http.response.start',
-            'status': 503,
-            'headers': [[b'content-type', b'text/plain']],
-        })
-        await send({
-            'type': 'http.response.body',
-            'body': b'Server initialization failed',
-        })
-    app = placeholder_app

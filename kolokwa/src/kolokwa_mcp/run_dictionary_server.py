@@ -151,9 +151,14 @@ try:
         metrics, logger, Config
     )
     
-    # Create server
+    # CRITICAL: Ensure HTTP transport is set before creating server
+    os.environ['MCP_TRANSPORT'] = 'http'
+    
+    # Create server with explicit configuration
     mcp = create_server("kolokwa-dictionary")
     print("✓ MCP server created", file=sys.stderr)
+    print(f"✓ Server type: {type(mcp).__name__}", file=sys.stderr)
+    print(f"✓ Server module: {type(mcp).__module__}", file=sys.stderr)
     
     # Import Django models
     from dictionary.models import KoloquaEntry, WordCategory, TranslationHistory
@@ -165,11 +170,10 @@ try:
     import json
     from datetime import datetime
     
-    # CRITICAL FIX: Don't check database at module import time
-    # This makes startup instant - database checks happen lazily on first use
+    # Defer database check
     print("⚠ Deferring database check to first request (fast startup)", file=sys.stderr)
     
-    # Async version for runtime checks - this is the ONLY database check function
+    # Async version for runtime checks
     async def check_database_available():
         """Check if database is available and has tables - called lazily on demand"""
         @sync_to_async
@@ -204,7 +208,6 @@ try:
         """Get overall statistics about the Kolokwa dictionary"""
         def compute_stats():
             try:
-                # Quick check without blocking
                 from django.db import connection
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT 1")
@@ -234,17 +237,7 @@ try:
     @handle_errors
     @track_performance("search_dictionary")
     async def search_dictionary(query: str, search_type: str = "all", limit: int = 10) -> str:
-        """Search the Kolokwa dictionary
-        
-        Args:
-            query: The search term to look for
-            search_type: Type of search - "kolokwa", "english", or "all"
-            limit: Maximum number of results to return (default: 10, max: 50)
-            
-        Returns:
-            JSON string with search results
-        """
-        # Validate inputs
+        """Search the Kolokwa dictionary"""
         if not query or not query.strip():
             return json.dumps({
                 "error": "Invalid query",
@@ -260,8 +253,6 @@ try:
             }, indent=2)
         
         limit = min(max(1, limit), Config.MAX_SEARCH_RESULTS)
-        
-        # Check database lazily on first request
         db_available = await check_database_available()
         
         @sync_to_async
@@ -337,7 +328,6 @@ try:
     @handle_errors
     async def health_check() -> str:
         """Check if the MCP server is running and healthy"""
-        # Quick health check - don't wait for database
         db_available = await check_database_available()
         
         health_info = {
@@ -362,38 +352,48 @@ try:
         return json.dumps(health_info, indent=2)
     
     print("✓ All tools and resources registered", file=sys.stderr)
-    
-    # Print startup info BEFORE exposing the app
     print_startup_info()
     
-    # CRITICAL: Expose server instance 
-    # FastMCP build expects BOTH 'mcp' and 'app' to be defined
-    # Do NOT remove or rename 'mcp' - the build script references it explicitly
-    app = mcp  # For ASGI/HTTP serving
+    # CRITICAL FIX: Properly expose FastMCP as ASGI app
+    # FastMCP has an internal ASGI app that needs to be exposed
+    print(f"\n🔍 Configuring ASGI application...", file=sys.stderr)
     
-    # Verify the server is properly initialized
-    print(f"✓ Server variable 'mcp' type: {type(mcp).__name__}", file=sys.stderr)
-    print(f"✓ Server variable 'app' assigned", file=sys.stderr)
-    @mcp.tool()
-    async def startup_verification() -> str:
-        """Internal tool to verify server is fully initialized"""
-        return json.dumps({
-            "status": "initialized",
-            "server": "kolokwa-dictionary",
-            "timestamp": str(datetime.now()),
-            "message": "Server is fully operational"
-        })
+    # Check if FastMCP has a method to get the ASGI app
+    if hasattr(mcp, 'get_asgi_app'):
+        app = mcp.get_asgi_app()
+        print(f"✓ Using mcp.get_asgi_app(): {type(app).__name__}", file=sys.stderr)
+    elif hasattr(mcp, '_app'):
+        app = mcp._app
+        print(f"✓ Using mcp._app: {type(app).__name__}", file=sys.stderr)
+    elif hasattr(mcp, 'app'):
+        app = mcp.app
+        print(f"✓ Using mcp.app: {type(app).__name__}", file=sys.stderr)
+    else:
+        # FastMCP itself might be callable as ASGI
+        app = mcp
+        print(f"✓ Using FastMCP instance directly: {type(app).__name__}", file=sys.stderr)
     
-    # Expose server instance
-    app = mcp
+    # Verify app is callable
+    if callable(app):
+        print(f"✓ App is callable (ASGI-compatible)", file=sys.stderr)
+    else:
+        print(f"⚠ WARNING: App might not be ASGI-compatible!", file=sys.stderr)
+        # Try wrapping it
+        try:
+            from fastmcp import FastMCP
+            if isinstance(mcp, FastMCP):
+                # Create a simple ASGI wrapper
+                async def asgi_app(scope, receive, send):
+                    # This is a fallback - FastMCP should handle this internally
+                    await mcp(scope, receive, send)
+                app = asgi_app
+                print(f"✓ Created ASGI wrapper", file=sys.stderr)
+        except Exception as e:
+            print(f"⚠ Could not create wrapper: {e}", file=sys.stderr)
     
-    # Server is ready immediately - database checks happen on first request
-    print("\n✅ Server ready (database checks deferred)", file=sys.stderr)
+    print(f"\n✓ ASGI app ready: {type(app).__name__}", file=sys.stderr)
+    print("✅ Server ready (database checks deferred)", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
-    
-    # Verify we can actually serve requests
-    if IS_PREFLIGHT:
-        print("🔍 Pre-flight mode: Server should respond immediately", file=sys.stderr)
     
 except ImportError as e:
     print("\n" + "=" * 60, file=sys.stderr)

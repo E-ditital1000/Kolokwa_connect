@@ -164,42 +164,13 @@ try:
     from asgiref.sync import sync_to_async
     import json
     
-    # FIXED: Synchronous database check that's safe at module level
-    def check_database_available_sync():
-        """Check if database is available and has tables - SYNC version for startup"""
-        try:
-            # Use a simple test query that doesn't require async
-            from django.db import connection
-            with connection.cursor() as cursor:
-                db_engine = connection.settings_dict['ENGINE']
-                
-                # Use actual table name 'koloqua_entries' from models.py Meta.db_table
-                if 'sqlite' in db_engine:
-                    cursor.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='koloqua_entries'"
-                    )
-                elif 'postgresql' in db_engine:
-                    cursor.execute(
-                        "SELECT tablename FROM pg_tables WHERE tablename='koloqua_entries'"
-                    )
-                else:
-                    cursor.execute("SELECT 1")
-                
-                result = cursor.fetchone()
-                available = result is not None
-                if available:
-                    print(f"✓ Database available ({db_engine})", file=sys.stderr)
-                else:
-                    print(f"⚠ Table 'koloqua_entries' not found in database", file=sys.stderr)
-                return available
-        except Exception as e:
-            print(f"⚠ Database check at startup: {type(e).__name__}", file=sys.stderr)
-            # Return True to allow async checks later - don't fail at import time
-            return True
+    # CRITICAL FIX: Don't check database at module import time
+    # This makes startup instant - database checks happen lazily on first use
+    print("⚠ Deferring database check to first request (fast startup)", file=sys.stderr)
     
-    # Async version for runtime checks
-    async def check_database_available_async():
-        """Check if database is available and has tables - ASYNC version for runtime"""
+    # Async version for runtime checks - this is the ONLY database check function
+    async def check_database_available():
+        """Check if database is available and has tables - called lazily on demand"""
         @sync_to_async
         def _check():
             try:
@@ -220,13 +191,10 @@ try:
                     result = cursor.fetchone()
                     return result is not None
             except Exception as e:
-                logger.warning(f"Database check failed: {type(e).__name__}: {str(e)}")
+                logger.debug(f"Database check: {type(e).__name__}")
                 return False
         
         return await _check()
-    
-    # Check database at startup - SYNC version, safe at module level
-    DB_AVAILABLE = check_database_available_sync()
     
     # Register resources
     @mcp.resource("kolokwa://dictionary/stats")
@@ -234,20 +202,12 @@ try:
     def get_dictionary_stats() -> str:
         """Get overall statistics about the Kolokwa dictionary"""
         def compute_stats():
-            if not DB_AVAILABLE:
-                return {
-                    "status": "healthy",
-                    "mode": "limited",
-                    "database_available": False,
-                    "message": "Server is running. Database statistics unavailable.",
-                    "capabilities": [
-                        "health_check available",
-                        "search_dictionary available (demo mode)",
-                        "Database required for full functionality"
-                    ]
-                }
-            
             try:
+                # Quick check without blocking
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                
                 return {
                     "status": "healthy",
                     "database_available": True,
@@ -258,12 +218,12 @@ try:
                     "phrases": KoloquaEntry.objects.filter(status='verified', entry_type='phrase').count(),
                 }
             except Exception as e:
-                logger.error(f"Stats error: {e}")
+                logger.warning(f"Stats unavailable: {e}")
                 return {
                     "status": "degraded",
                     "database_available": False,
-                    "error": "Could not retrieve statistics",
-                    "message": str(e)
+                    "message": "Database statistics unavailable",
+                    "capabilities": ["health_check", "search_dictionary (limited)"]
                 }
         
         stats = get_cached_or_compute('dictionary_stats', compute_stats, ttl=60)
@@ -300,17 +260,13 @@ try:
         
         limit = min(max(1, limit), Config.MAX_SEARCH_RESULTS)
         
-        # Runtime database check using async version
-        try:
-            is_db_ready = await check_database_available_async()
-        except Exception as e:
-            logger.warning(f"Runtime DB check failed: {e}")
-            is_db_ready = False
+        # Check database lazily on first request
+        db_available = await check_database_available()
         
         @sync_to_async
         def _search():
-            if not is_db_ready:
-                return None  # Signal database unavailable
+            if not db_available:
+                return None
             
             try:
                 if search_type == "kolokwa":
@@ -356,8 +312,7 @@ try:
                     "search_type": search_type,
                     "results": 0,
                     "entries": [],
-                    "message": "Database not available. Search requires database connection.",
-                    "suggestion": "Check database configuration and ensure tables are created."
+                    "message": "Database not available. Search requires database connection."
                 }, indent=2)
             
             return json.dumps({
@@ -381,17 +336,13 @@ try:
     @handle_errors
     async def health_check() -> str:
         """Check if the MCP server is running and healthy"""
-        # Runtime database check using async version
-        try:
-            db_available = await check_database_available_async()
-        except Exception as e:
-            logger.warning(f"Health check DB verification failed: {e}")
-            db_available = False
+        # Quick health check - don't wait for database
+        db_available = await check_database_available()
         
         health_info = {
             "status": "healthy",
             "server": "kolokwa-dictionary",
-            "version": "1.0.2",
+            "version": "1.0.3",
             "transport": "http",
             "database_available": db_available,
             "environment": Config.ENVIRONMENT,
@@ -415,11 +366,8 @@ try:
     # Expose server instance
     app = mcp
     
-    if DB_AVAILABLE:
-        print("\n✅ Server ready with full database access", file=sys.stderr)
-    else:
-        print("\n⚠️  Server ready in limited mode (no database)", file=sys.stderr)
-    
+    # Server is ready immediately - database checks happen on first request
+    print("\n✅ Server ready (database checks deferred)", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     
 except ImportError as e:

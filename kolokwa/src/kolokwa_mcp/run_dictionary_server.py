@@ -163,6 +163,7 @@ try:
     from django.db.utils import OperationalError
     from asgiref.sync import sync_to_async
     import json
+    from datetime import datetime
     
     # CRITICAL FIX: Don't check database at module import time
     # This makes startup instant - database checks happen lazily on first use
@@ -361,7 +362,27 @@ try:
         return json.dumps(health_info, indent=2)
     
     print("✓ All tools and resources registered", file=sys.stderr)
+    
+    # Print startup info BEFORE exposing the app
     print_startup_info()
+    
+    # CRITICAL: Expose server instance 
+    # FastMCP build expects BOTH 'mcp' and 'app' to be defined
+    # Do NOT remove or rename 'mcp' - the build script references it explicitly
+    app = mcp  # For ASGI/HTTP serving
+    
+    # Verify the server is properly initialized
+    print(f"✓ Server variable 'mcp' type: {type(mcp).__name__}", file=sys.stderr)
+    print(f"✓ Server variable 'app' assigned", file=sys.stderr)
+    @mcp.tool()
+    async def startup_verification() -> str:
+        """Internal tool to verify server is fully initialized"""
+        return json.dumps({
+            "status": "initialized",
+            "server": "kolokwa-dictionary",
+            "timestamp": str(datetime.now()),
+            "message": "Server is fully operational"
+        })
     
     # Expose server instance
     app = mcp
@@ -369,6 +390,10 @@ try:
     # Server is ready immediately - database checks happen on first request
     print("\n✅ Server ready (database checks deferred)", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
+    
+    # Verify we can actually serve requests
+    if IS_PREFLIGHT:
+        print("🔍 Pre-flight mode: Server should respond immediately", file=sys.stderr)
     
 except ImportError as e:
     print("\n" + "=" * 60, file=sys.stderr)

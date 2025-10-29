@@ -15,14 +15,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
-[tool.setuptools]
-# Only include the kolokwa_mcp package from the kolokwa/src directory
-packages = ["kolokwa_mcp"]
-
-[tool.setuptools.package-dir]
-# Map kolokwa_mcp package to its actual location
-kolokwa_mcp = "kolokwa/src/kolokwa_mcp"
-
 [tool.setuptools.packages.find]
 # Find packages only in kolokwa/src
 where = ["kolokwa/src"]

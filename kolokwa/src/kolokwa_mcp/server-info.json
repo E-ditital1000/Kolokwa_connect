@@ -1,0 +1,80 @@
+{
+  "server": {
+    "name": "kolokwa-dictionary",
+    "instructions": null,
+    "version": null,
+    "generation": 1,
+    "capabilities": {
+      "tools": {
+        "listChanged": true
+      },
+      "resources": {
+        "subscribe": false,
+        "listChanged": false
+      },
+      "prompts": {
+        "listChanged": false
+      },
+      "logging": {}
+    }
+  },
+  "environment": {
+    "fastmcp": "2.12.5",
+    "mcp": "1.16.0"
+  },
+  "tools": [
+    {
+      "key": "search_kolokwa",
+      "name": "search_kolokwa",
+      "description": "Search the Kolokwa dictionary for words, phrases, or translations.",
+      "input_schema": {
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "search_type": {
+            "default": "all",
+            "title": "Search Type",
+            "type": "string"
+          },
+          "limit": {
+            "default": 10,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "search_kolokwaArguments",
+        "type": "object"
+      },
+      "output_schema": null,
+      "annotations": null,
+      "tags": null,
+      "enabled": null,
+      "title": null,
+      "meta": null
+    },
+    {
+      "key": "health_check",
+      "name": "health_check",
+      "description": "Check if the MCP server is running properly.",
+      "input_schema": {
+        "properties": {},
+        "title": "health_checkArguments",
+        "type": "object"
+      },
+      "output_schema": null,
+      "annotations": null,
+      "tags": null,
+      "enabled": null,
+      "title": null,
+      "meta": null
+    }
+  ],
+  "prompts": [],
+  "resources": [],
+  "templates": []
+}

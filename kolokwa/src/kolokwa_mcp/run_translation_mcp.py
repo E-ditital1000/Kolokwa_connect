@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 DB_CONFIG = {
     'host': os.getenv('DATABASE_HOST', 'localhost'),
-    'port': int(os.getenv('DATABASE_PORT', 5432)),
+    'port': int(os.getenv('DATABASE_PORT', '5432')),
     'user': os.getenv('DATABASE_USER', 'postgres'),
     'password': os.getenv('DATABASE_PASSWORD', ''),
     'database': os.getenv('DATABASE_NAME', 'kolokwa_db')
@@ -43,22 +43,39 @@ mcp = FastMCP("kolokwa-translator")
 # Global clients
 db_pool = None
 openai_client = None
+db_connection_failed = False
 
 
 async def get_db_pool():
     """Get or create database connection pool"""
-    global db_pool
+    global db_pool, db_connection_failed
+    
+    if db_connection_failed:
+        raise Exception("Database connection previously failed. Please check your database configuration.")
+    
     if db_pool is None:
-        db_pool = await asyncpg.create_pool(
-            host=DB_CONFIG['host'],
-            port=DB_CONFIG['port'],
-            user=DB_CONFIG['user'],
-            password=DB_CONFIG['password'],
-            database=DB_CONFIG['database'],
-            min_size=2,
-            max_size=10
-        )
-        logger.info("Database connection pool initialized")
+        try:
+            if not DB_CONFIG['host'] or not DB_CONFIG['database']:
+                db_connection_failed = True
+                raise Exception("Missing required database configuration")
+            
+            db_pool = await asyncpg.create_pool(
+                host=DB_CONFIG['host'],
+                port=DB_CONFIG['port'],
+                user=DB_CONFIG['user'],
+                password=DB_CONFIG['password'],
+                database=DB_CONFIG['database'],
+                min_size=1,
+                max_size=10,
+                command_timeout=30,
+                timeout=10
+            )
+            logger.info("Database connection pool initialized")
+        except Exception as e:
+            db_connection_failed = True
+            logger.error(f"Failed to create database pool: {e}")
+            raise Exception(f"Database connection failed: {str(e)}")
+    
     return db_pool
 
 
@@ -74,7 +91,12 @@ async def get_openai_client():
 async def search_dictionary(search_terms: List[str]) -> List[Dict[str, Any]]:
     """Search the dictionary for matching entries"""
     entries = []
-    pool = await get_db_pool()
+    
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error in search: {e}")
+        return []
     
     try:
         async with pool.acquire() as conn:
@@ -261,7 +283,14 @@ async def translate_phrase(
     Returns:
         Translation with dictionary matches
     """
-    pool = await get_db_pool()
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        return {
+            'success': False,
+            'error': f'Database connection failed: {str(e)}'
+        }
     
     try:
         async with pool.acquire() as conn:
@@ -337,7 +366,14 @@ async def explain_kolokwa_phrase(phrase: str) -> Dict[str, Any]:
     Returns:
         Detailed explanation with cultural and usage context
     """
-    pool = await get_db_pool()
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        return {
+            'success': False,
+            'error': f'Database connection failed: {str(e)}'
+        }
     
     try:
         async with pool.acquire() as conn:
@@ -395,7 +431,37 @@ async def explain_kolokwa_phrase(phrase: str) -> Dict[str, Any]:
         }
 
 
-if __name__ == "__main__":
-    # Run with stdio transport for Claude Desktop
-    logger.info("Starting Kolokwa Translation MCP Server with stdio transport...")
-    mcp.run(transport="stdio")
+# Health check
+@mcp.tool()
+async def health_check() -> Dict[str, Any]:
+    """
+    Check if the MCP server is running properly.
+    
+    Returns:
+        Server health status
+    """
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        
+        openai_status = "connected" if OPENAI_API_KEY else "not_configured"
+        
+        return {
+            'success': True,
+            'status': 'healthy',
+            'server': 'kolokwa-translator',
+            'database': 'connected',
+            'openai': openai_status
+        }
+    except Exception as e:
+        logger.warning(f"Health check warning: {e}")
+        return {
+            'success': True,
+            'status': 'running',
+            'server': 'kolokwa-translator',
+            'database': 'not_connected',
+            'note': 'Server is running but database connection failed.'
+        }
+
+

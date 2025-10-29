@@ -4,23 +4,23 @@ Provides dictionary lookup, search, and contribution tools
 """
 
 import os
-import sys
 import logging
-from typing import Optional, List, Dict, Any
-import asyncpg
-from dotenv import load_dotenv
+from typing import Optional, Dict, Any
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
+# Configure logging FIRST before any other imports
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Database configuration with fallback defaults
+# Now import everything else
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Database configuration - but DON'T import asyncpg yet
 DB_CONFIG = {
     'host': os.getenv('DATABASE_HOST', 'localhost'),
     'port': int(os.getenv('DATABASE_PORT', '5432')),
@@ -35,60 +35,48 @@ from mcp.server.fastmcp import FastMCP
 # Initialize FastMCP server
 mcp = FastMCP("kolokwa-dictionary")
 
-# Database connection pool - initialized lazily
+# Database connection pool - will be initialized on first use
 _db_pool = None
-_db_connection_failed = False
-_pool_lock = None
 
 
 async def get_db_pool():
-    """Get or create database connection pool - with error handling and proper async init"""
-    global _db_pool, _db_connection_failed, _pool_lock
+    """Get or create database connection pool with lazy asyncpg import"""
+    global _db_pool
     
-    # Import asyncio here to avoid event loop issues
-    import asyncio
+    if _db_pool is not None:
+        return _db_pool
     
-    # Initialize lock on first call
-    if _pool_lock is None:
-        _pool_lock = asyncio.Lock()
+    # Import asyncpg ONLY when actually needed
+    import asyncpg
     
-    if _db_connection_failed:
-        raise Exception("Database connection previously failed. Please check your database configuration.")
-    
-    async with _pool_lock:
-        if _db_pool is None:
-            try:
-                # Validate required configuration
-                if not DB_CONFIG['host'] or not DB_CONFIG['database']:
-                    _db_connection_failed = True
-                    raise Exception("Missing required database configuration (host or database name)")
-                
-                logger.info(f"Initializing database pool: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
-                
-                _db_pool = await asyncpg.create_pool(
-                    host=DB_CONFIG['host'],
-                    port=DB_CONFIG['port'],
-                    user=DB_CONFIG['user'],
-                    password=DB_CONFIG['password'],
-                    database=DB_CONFIG['database'],
-                    min_size=1,
-                    max_size=10,
-                    command_timeout=30,
-                    timeout=10  # Connection timeout
-                )
-                
-                # Test the connection
-                async with _db_pool.acquire() as conn:
-                    await conn.fetchval("SELECT 1")
-                
-                logger.info(f"Database connection pool initialized successfully")
-                
-            except Exception as e:
-                _db_connection_failed = True
-                logger.error(f"Failed to create database pool: {e}")
-                raise Exception(f"Database connection failed: {str(e)}")
-    
-    return _db_pool
+    try:
+        if not DB_CONFIG['host'] or not DB_CONFIG['database']:
+            raise Exception("Missing required database configuration")
+        
+        logger.info(f"Connecting to database: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
+        
+        _db_pool = await asyncpg.create_pool(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            min_size=1,
+            max_size=10,
+            command_timeout=30,
+            timeout=10
+        )
+        
+        # Test connection
+        async with _db_pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        
+        logger.info("Database connected successfully")
+        return _db_pool
+        
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise Exception(f"Database connection failed: {str(e)}")
 
 
 @mcp.tool()
@@ -112,15 +100,7 @@ async def search_kolokwa(
     
     try:
         pool = await get_db_pool()
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return {
-            'success': False,
-            'error': f'Database connection failed: {str(e)}',
-            'query': query
-        }
-    
-    try:
+        
         async with pool.acquire() as conn:
             if search_type == "kolokwa":
                 results = await conn.fetch("""
@@ -216,14 +196,7 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
     """
     try:
         pool = await get_db_pool()
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return {
-            'success': False,
-            'error': f'Database connection failed: {str(e)}'
-        }
-    
-    try:
+        
         async with pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT 
@@ -232,8 +205,7 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
                     e.example_sentence_english, e.pronunciation_guide, e.cultural_notes,
                     e.upvotes, e.downvotes, e.status, e.created_at, e.updated_at,
                     e.region_specific, e.verification_count,
-                    u.username as contributor_username,
-                    u.email as contributor_email
+                    u.username as contributor_username
                 FROM koloqua_entries e
                 LEFT JOIN users u ON e.contributor_id = u.id
                 WHERE e.id = $1
@@ -293,14 +265,7 @@ async def get_random_entries(count: int = 5, entry_type: Optional[str] = None) -
     
     try:
         pool = await get_db_pool()
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return {
-            'success': False,
-            'error': f'Database connection failed: {str(e)}'
-        }
-    
-    try:
+        
         async with pool.acquire() as conn:
             if entry_type:
                 results = await conn.fetch("""
@@ -362,14 +327,7 @@ async def get_dictionary_stats() -> Dict[str, Any]:
     """
     try:
         pool = await get_db_pool()
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return {
-            'success': False,
-            'error': f'Database connection failed: {str(e)}'
-        }
-    
-    try:
+        
         async with pool.acquire() as conn:
             stats = await conn.fetchrow("""
                 SELECT 
@@ -406,7 +364,6 @@ async def get_dictionary_stats() -> Dict[str, Any]:
         }
 
 
-# Health check for deployment validation
 @mcp.tool()
 async def health_check() -> Dict[str, Any]:
     """
@@ -416,7 +373,6 @@ async def health_check() -> Dict[str, Any]:
         Server health status
     """
     try:
-        # Try to connect to database
         pool = await get_db_pool()
         async with pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
@@ -428,11 +384,11 @@ async def health_check() -> Dict[str, Any]:
             'database': 'connected'
         }
     except Exception as e:
-        logger.warning(f"Health check warning: {e}")
+        logger.warning(f"Health check: {e}")
         return {
             'success': True,
             'status': 'running',
             'server': 'kolokwa-dictionary',
             'database': 'not_connected',
-            'note': 'Server is running but database connection failed. Tools will not work until database is accessible.'
+            'note': 'Server running but database not connected. Configure DATABASE_HOST and DATABASE_PASSWORD environment variables.'
         }

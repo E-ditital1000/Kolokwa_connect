@@ -36,43 +36,59 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("kolokwa-dictionary")
 
 # Database connection pool - initialized lazily
-db_pool = None
-db_connection_failed = False
+_db_pool = None
+_db_connection_failed = False
+_pool_lock = None
 
 
 async def get_db_pool():
-    """Get or create database connection pool - with error handling"""
-    global db_pool, db_connection_failed
+    """Get or create database connection pool - with error handling and proper async init"""
+    global _db_pool, _db_connection_failed, _pool_lock
     
-    if db_connection_failed:
+    # Import asyncio here to avoid event loop issues
+    import asyncio
+    
+    # Initialize lock on first call
+    if _pool_lock is None:
+        _pool_lock = asyncio.Lock()
+    
+    if _db_connection_failed:
         raise Exception("Database connection previously failed. Please check your database configuration.")
     
-    if db_pool is None:
-        try:
-            # Validate required configuration
-            if not DB_CONFIG['host'] or not DB_CONFIG['database']:
-                db_connection_failed = True
-                raise Exception("Missing required database configuration (host or database name)")
-            
-            db_pool = await asyncpg.create_pool(
-                host=DB_CONFIG['host'],
-                port=DB_CONFIG['port'],
-                user=DB_CONFIG['user'],
-                password=DB_CONFIG['password'],
-                database=DB_CONFIG['database'],
-                min_size=1,
-                max_size=10,
-                command_timeout=30,
-                timeout=10  # Connection timeout
-            )
-            logger.info(f"Database connection pool initialized (host: {DB_CONFIG['host']}, db: {DB_CONFIG['database']})")
-            
-        except Exception as e:
-            db_connection_failed = True
-            logger.error(f"Failed to create database pool: {e}")
-            raise Exception(f"Database connection failed: {str(e)}")
+    async with _pool_lock:
+        if _db_pool is None:
+            try:
+                # Validate required configuration
+                if not DB_CONFIG['host'] or not DB_CONFIG['database']:
+                    _db_connection_failed = True
+                    raise Exception("Missing required database configuration (host or database name)")
+                
+                logger.info(f"Initializing database pool: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
+                
+                _db_pool = await asyncpg.create_pool(
+                    host=DB_CONFIG['host'],
+                    port=DB_CONFIG['port'],
+                    user=DB_CONFIG['user'],
+                    password=DB_CONFIG['password'],
+                    database=DB_CONFIG['database'],
+                    min_size=1,
+                    max_size=10,
+                    command_timeout=30,
+                    timeout=10  # Connection timeout
+                )
+                
+                # Test the connection
+                async with _db_pool.acquire() as conn:
+                    await conn.fetchval("SELECT 1")
+                
+                logger.info(f"Database connection pool initialized successfully")
+                
+            except Exception as e:
+                _db_connection_failed = True
+                logger.error(f"Failed to create database pool: {e}")
+                raise Exception(f"Database connection failed: {str(e)}")
     
-    return db_pool
+    return _db_pool
 
 
 @mcp.tool()
@@ -420,4 +436,3 @@ async def health_check() -> Dict[str, Any]:
             'database': 'not_connected',
             'note': 'Server is running but database connection failed. Tools will not work until database is accessible.'
         }
-

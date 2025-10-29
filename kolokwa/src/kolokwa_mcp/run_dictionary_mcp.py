@@ -1,40 +1,33 @@
 """
-Kolokwa Dictionary MCP Server - STDIO Runner
-Integrates with Django settings and database
+Kolokwa Dictionary MCP Server using FastMCP
+Provides dictionary lookup, search, and contribution tools
 """
 
 import os
 import sys
 import logging
-from pathlib import Path
-
-# Setup Django environment FIRST
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.insert(0, str(BASE_DIR))
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Kolokwa_connect.settings')
-
-import django
-django.setup()
-
-# Now import Django models and other dependencies
-from django.conf import settings
+from typing import Optional, List, Dict, Any
 import asyncpg
 from dotenv import load_dotenv
-from typing import Dict, Any, Optional
 
-# Load environment
-load_dotenv(BASE_DIR / '.env')
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stderr)  # Log to stderr to keep stdout clean
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Database configuration
+DB_CONFIG = {
+    'host': os.getenv('DATABASE_HOST', 'localhost'),
+    'port': int(os.getenv('DATABASE_PORT', 5432)),
+    'user': os.getenv('DATABASE_USER', 'postgres'),
+    'password': os.getenv('DATABASE_PASSWORD', ''),
+    'database': os.getenv('DATABASE_NAME', 'kolokwa_db')
+}
 
 # Import FastMCP
 from mcp.server.fastmcp import FastMCP
@@ -42,16 +35,7 @@ from mcp.server.fastmcp import FastMCP
 # Initialize FastMCP server
 mcp = FastMCP("kolokwa-dictionary")
 
-# Database configuration from Django settings
-DB_CONFIG = {
-    'host': settings.DATABASES['default']['HOST'],
-    'port': int(settings.DATABASES['default']['PORT']),
-    'user': settings.DATABASES['default']['USER'],
-    'password': settings.DATABASES['default']['PASSWORD'],
-    'database': settings.DATABASES['default']['NAME']
-}
-
-# Global database pool
+# Database connection pool
 db_pool = None
 
 
@@ -59,21 +43,16 @@ async def get_db_pool():
     """Get or create database connection pool"""
     global db_pool
     if db_pool is None:
-        try:
-            db_pool = await asyncpg.create_pool(
-                host=DB_CONFIG['host'],
-                port=DB_CONFIG['port'],
-                user=DB_CONFIG['user'],
-                password=DB_CONFIG['password'],
-                database=DB_CONFIG['database'],
-                min_size=2,
-                max_size=10,
-                command_timeout=60
-            )
-            logger.info(f"✓ Database pool initialized: {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-        except Exception as e:
-            logger.error(f"✗ Database connection failed: {e}")
-            raise
+        db_pool = await asyncpg.create_pool(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            min_size=2,
+            max_size=10
+        )
+        logger.info("Database connection pool initialized")
     return db_pool
 
 
@@ -100,7 +79,7 @@ async def search_kolokwa(
     try:
         async with pool.acquire() as conn:
             if search_type == "kolokwa":
-                query_sql = """
+                results = await conn.fetch("""
                     SELECT 
                         id, koloqua_text, english_translation, literal_translation,
                         entry_type, context_explanation, example_sentence_koloqua,
@@ -111,11 +90,10 @@ async def search_kolokwa(
                     AND (koloqua_text ILIKE $1 OR example_sentence_koloqua ILIKE $1)
                     ORDER BY upvotes - downvotes DESC
                     LIMIT $2
-                """
-                results = await conn.fetch(query_sql, f"%{query}%", limit)
+                """, f"%{query}%", limit)
             
             elif search_type == "english":
-                query_sql = """
+                results = await conn.fetch("""
                     SELECT 
                         id, koloqua_text, english_translation, literal_translation,
                         entry_type, context_explanation, example_sentence_koloqua,
@@ -126,11 +104,10 @@ async def search_kolokwa(
                     AND (english_translation ILIKE $1 OR example_sentence_english ILIKE $1)
                     ORDER BY upvotes - downvotes DESC
                     LIMIT $2
-                """
-                results = await conn.fetch(query_sql, f"%{query}%", limit)
+                """, f"%{query}%", limit)
             
             else:  # search_type == "all"
-                query_sql = """
+                results = await conn.fetch("""
                     SELECT 
                         id, koloqua_text, english_translation, literal_translation,
                         entry_type, context_explanation, example_sentence_koloqua,
@@ -147,8 +124,7 @@ async def search_kolokwa(
                     )
                     ORDER BY upvotes - downvotes DESC
                     LIMIT $2
-                """
-                results = await conn.fetch(query_sql, f"%{query}%", limit)
+                """, f"%{query}%", limit)
             
             entries = []
             for row in results:
@@ -156,17 +132,15 @@ async def search_kolokwa(
                     'id': row['id'],
                     'kolokwa': row['koloqua_text'],
                     'english': row['english_translation'],
-                    'literal': row['literal_translation'] or '',
+                    'literal': row['literal_translation'],
                     'type': row['entry_type'],
-                    'context': row['context_explanation'] or '',
-                    'example_kolokwa': row['example_sentence_koloqua'] or '',
-                    'example_english': row['example_sentence_english'] or '',
-                    'pronunciation': row['pronunciation_guide'] or '',
-                    'cultural_notes': row['cultural_notes'] or '',
+                    'context': row['context_explanation'],
+                    'example_kolokwa': row['example_sentence_koloqua'],
+                    'example_english': row['example_sentence_english'],
+                    'pronunciation': row['pronunciation_guide'],
+                    'cultural_notes': row['cultural_notes'],
                     'score': row['upvotes'] - row['downvotes']
                 })
-            
-            logger.info(f"Search '{query}' ({search_type}): {len(entries)} results")
             
             return {
                 'success': True,
@@ -177,7 +151,7 @@ async def search_kolokwa(
             }
     
     except Exception as e:
-        logger.error(f"Search error: {e}", exc_info=True)
+        logger.error(f"Search error: {e}")
         return {
             'success': False,
             'error': str(e),
@@ -207,7 +181,8 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
                     e.example_sentence_english, e.pronunciation_guide, e.cultural_notes,
                     e.upvotes, e.downvotes, e.status, e.created_at, e.updated_at,
                     e.region_specific, e.verification_count,
-                    u.username as contributor_username
+                    u.username as contributor_username,
+                    u.email as contributor_email
                 FROM koloqua_entries e
                 LEFT JOIN users u ON e.contributor_id = u.id
                 WHERE e.id = $1
@@ -219,22 +194,20 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
                     'error': f'Entry with ID {entry_id} not found'
                 }
             
-            logger.info(f"Retrieved entry #{entry_id}: {row['koloqua_text']}")
-            
             return {
                 'success': True,
                 'entry': {
                     'id': row['id'],
                     'kolokwa': row['koloqua_text'],
                     'english': row['english_translation'],
-                    'literal': row['literal_translation'] or '',
+                    'literal': row['literal_translation'],
                     'type': row['entry_type'],
-                    'context': row['context_explanation'] or '',
-                    'example_kolokwa': row['example_sentence_koloqua'] or '',
-                    'example_english': row['example_sentence_english'] or '',
-                    'pronunciation': row['pronunciation_guide'] or '',
-                    'cultural_notes': row['cultural_notes'] or '',
-                    'region': row['region_specific'] or '',
+                    'context': row['context_explanation'],
+                    'example_kolokwa': row['example_sentence_koloqua'],
+                    'example_english': row['example_sentence_english'],
+                    'pronunciation': row['pronunciation_guide'],
+                    'cultural_notes': row['cultural_notes'],
+                    'region': row['region_specific'],
                     'upvotes': row['upvotes'],
                     'downvotes': row['downvotes'],
                     'score': row['upvotes'] - row['downvotes'],
@@ -246,7 +219,7 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
             }
     
     except Exception as e:
-        logger.error(f"Get entry error: {e}", exc_info=True)
+        logger.error(f"Get entry error: {e}")
         return {
             'success': False,
             'error': str(e)
@@ -300,13 +273,11 @@ async def get_random_entries(count: int = 5, entry_type: Optional[str] = None) -
                     'kolokwa': row['koloqua_text'],
                     'english': row['english_translation'],
                     'type': row['entry_type'],
-                    'example_kolokwa': row['example_sentence_koloqua'] or '',
-                    'example_english': row['example_sentence_english'] or '',
-                    'pronunciation': row['pronunciation_guide'] or '',
+                    'example_kolokwa': row['example_sentence_koloqua'],
+                    'example_english': row['example_sentence_english'],
+                    'pronunciation': row['pronunciation_guide'],
                     'score': row['upvotes'] - row['downvotes']
                 })
-            
-            logger.info(f"Random entries: {len(entries)} results (type={entry_type})")
             
             return {
                 'success': True,
@@ -315,7 +286,7 @@ async def get_random_entries(count: int = 5, entry_type: Optional[str] = None) -
             }
     
     except Exception as e:
-        logger.error(f"Random entries error: {e}", exc_info=True)
+        logger.error(f"Random entries error: {e}")
         return {
             'success': False,
             'error': str(e)
@@ -339,14 +310,12 @@ async def get_dictionary_stats() -> Dict[str, Any]:
                     COUNT(*) FILTER (WHERE status = 'verified') as verified_entries,
                     COUNT(*) FILTER (WHERE status = 'pending') as pending_entries,
                     COUNT(DISTINCT contributor_id) as total_contributors,
-                    COUNT(*) FILTER (WHERE entry_type = 'word' AND status = 'verified') as total_words,
-                    COUNT(*) FILTER (WHERE entry_type = 'phrase' AND status = 'verified') as total_phrases,
-                    COUNT(*) FILTER (WHERE entry_type = 'idiom' AND status = 'verified') as total_idioms,
-                    COUNT(*) FILTER (WHERE entry_type = 'proverb' AND status = 'verified') as total_proverbs
+                    COUNT(*) FILTER (WHERE entry_type = 'word') as total_words,
+                    COUNT(*) FILTER (WHERE entry_type = 'phrase') as total_phrases,
+                    COUNT(*) FILTER (WHERE entry_type = 'idiom') as total_idioms,
+                    COUNT(*) FILTER (WHERE entry_type = 'proverb') as total_proverbs
                 FROM koloqua_entries
             """)
-            
-            logger.info(f"Stats retrieved: {stats['verified_entries']} verified entries")
             
             return {
                 'success': True,
@@ -364,7 +333,7 @@ async def get_dictionary_stats() -> Dict[str, Any]:
             }
     
     except Exception as e:
-        logger.error(f"Get stats error: {e}", exc_info=True)
+        logger.error(f"Get stats error: {e}")
         return {
             'success': False,
             'error': str(e)
@@ -372,17 +341,6 @@ async def get_dictionary_stats() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    try:
-        logger.info("=" * 60)
-        logger.info("Starting Kolokwa Dictionary MCP Server (STDIO)")
-        logger.info(f"Database: {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-        logger.info("=" * 60)
-        
-        # Run with stdio transport
-        mcp.run(transport="stdio")
-        
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
-    except Exception as e:
-        logger.error(f"Server error: {e}", exc_info=True)
-        sys.exit(1)
+    # Run with stdio transport for Claude Desktop
+    logger.info("Starting Kolokwa Dictionary MCP Server with stdio transport...")
+    mcp.run(transport="stdio")

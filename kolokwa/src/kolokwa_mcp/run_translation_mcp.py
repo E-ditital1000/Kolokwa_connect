@@ -1,61 +1,44 @@
 """
-Kolokwa Translation MCP Server - STDIO Runner
-AI-powered translation with Django integration
+Kolokwa Translation MCP Server using FastMCP
+Provides AI-powered natural language translation with Liberian context
 """
 
 import os
 import sys
 import logging
 import json
-from pathlib import Path
-from typing import Dict, Any, List
-
-# Setup Django environment FIRST
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.insert(0, str(BASE_DIR))
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Kolokwa_connect.settings')
-
-import django
-django.setup()
-
-# Now import Django models and other dependencies
-from django.conf import settings
+from typing import Optional, Dict, Any, List
 import asyncpg
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
-# Load environment
-load_dotenv(BASE_DIR / '.env')
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stderr)  # Log to stderr
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Configuration
+DB_CONFIG = {
+    'host': os.getenv('DATABASE_HOST', 'localhost'),
+    'port': int(os.getenv('DATABASE_PORT', 5432)),
+    'user': os.getenv('DATABASE_USER', 'postgres'),
+    'password': os.getenv('DATABASE_PASSWORD', ''),
+    'database': os.getenv('DATABASE_NAME', 'kolokwa_db')
+}
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 
 # Import FastMCP
 from mcp.server.fastmcp import FastMCP
 
 # Initialize FastMCP server
 mcp = FastMCP("kolokwa-translator")
-
-# Database configuration
-DB_CONFIG = {
-    'host': settings.DATABASES['default']['HOST'],
-    'port': int(settings.DATABASES['default']['PORT']),
-    'user': settings.DATABASES['default']['USER'],
-    'password': settings.DATABASES['default']['PASSWORD'],
-    'database': settings.DATABASES['default']['NAME']
-}
-
-# OpenAI configuration
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 
 # Global clients
 db_pool = None
@@ -66,37 +49,25 @@ async def get_db_pool():
     """Get or create database connection pool"""
     global db_pool
     if db_pool is None:
-        try:
-            db_pool = await asyncpg.create_pool(
-                host=DB_CONFIG['host'],
-                port=DB_CONFIG['port'],
-                user=DB_CONFIG['user'],
-                password=DB_CONFIG['password'],
-                database=DB_CONFIG['database'],
-                min_size=2,
-                max_size=10,
-                command_timeout=60
-            )
-            logger.info(f"✓ Database pool initialized: {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-        except Exception as e:
-            logger.error(f"✗ Database connection failed: {e}")
-            raise
+        db_pool = await asyncpg.create_pool(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            min_size=2,
+            max_size=10
+        )
+        logger.info("Database connection pool initialized")
     return db_pool
 
 
 async def get_openai_client():
     """Get or create OpenAI client"""
     global openai_client
-    if openai_client is None:
-        if not OPENAI_API_KEY:
-            logger.warning("⚠ OpenAI API key not configured")
-            return None
-        try:
-            openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-            logger.info("✓ OpenAI client initialized")
-        except Exception as e:
-            logger.error(f"✗ OpenAI client failed: {e}")
-            return None
+    if openai_client is None and OPENAI_API_KEY:
+        openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        logger.info("OpenAI client initialized")
     return openai_client
 
 
@@ -173,11 +144,6 @@ Extract key search terms from this user query. Return ONLY a JSON array of searc
 
 IMPORTANT: Kolokwa is LIBERIAN, NOT Nigerian.
 
-Common Liberian patterns:
-- "I na know" = "I don't know"
-- "How you say..." = "What do you mean..."
-- "My pekin" = "My child"
-
 Query: "{query}"
 
 Return JSON array of 1-5 key search terms:"""
@@ -201,8 +167,6 @@ Return JSON array of 1-5 key search terms:"""
         except json.JSONDecodeError:
             search_terms = [query]
         
-        logger.info(f"Extracted terms from '{query}': {search_terms}")
-        
         # Search dictionary
         entries = await search_dictionary(search_terms)
         
@@ -214,9 +178,8 @@ Return JSON array of 1-5 key search terms:"""
                 f"- English: {e['english_translation']}\n"
                 f"- Type: {e['entry_type']}\n"
                 + (f"- Example: \"{e['example_sentence_koloqua']}\" = \"{e['example_sentence_english']}\"\n" 
-                   if include_examples and e.get('example_sentence_koloqua') else "")
-                + (f"- Usage: {e['context_explanation']}\n" if e.get('context_explanation') else "")
-                + (f"- Pronunciation: {e['pronunciation_guide']}\n" if e.get('pronunciation_guide') else "")
+                   if include_examples and e['example_sentence_koloqua'] else "")
+                + (f"- Usage: {e['context_explanation']}\n" if e['context_explanation'] else "")
                 for i, e in enumerate(entries)
             ])
             
@@ -227,14 +190,13 @@ CRITICAL RULES:
 2. DO NOT invent translations
 3. Kolokwa is LIBERIAN - no Nigerian Pidgin patterns
 4. Use plain text - NO markdown
-5. Be conversational and helpful
 
 User asked: "{query}"
 
-Dictionary entries found:
+Dictionary entries:
 {entries_context}
 
-Provide a helpful, natural response using ONLY these entries."""
+Provide a helpful response using ONLY these entries in plain text."""
 
             translation_response = await client.chat.completions.create(
                 model=OPENAI_MODEL,
@@ -247,8 +209,6 @@ Provide a helpful, natural response using ONLY these entries."""
             )
             
             answer = translation_response.choices[0].message.content.strip()
-            
-            logger.info(f"Translation successful: {len(entries)} entries used")
             
             return {
                 'success': True,
@@ -266,18 +226,17 @@ Provide a helpful, natural response using ONLY these entries."""
                 ]
             }
         else:
-            logger.info(f"No dictionary matches for: {search_terms}")
             return {
                 'success': True,
                 'query': query,
                 'response': f"I couldn't find '{', '.join(search_terms[:3])}' in our Kolokwa dictionary yet. "
-                           f"Our dictionary is still growing! If you know this translation, consider contributing it.",
+                           f"Our dictionary is still growing!",
                 'dictionary_matches': 0,
                 'entries': []
             }
     
     except Exception as e:
-        logger.error(f"Translation error: {e}", exc_info=True)
+        logger.error(f"Translation error: {e}")
         return {
             'success': False,
             'error': str(e),
@@ -331,8 +290,6 @@ async def translate_phrase(
         
         matches = [dict(row) for row in results]
         
-        logger.info(f"Phrase translation '{phrase}': {len(matches)} matches")
-        
         if matches:
             return {
                 'success': True,
@@ -345,8 +302,8 @@ async def translate_phrase(
                         'id': m['id'],
                         'kolokwa': m['koloqua_text'],
                         'english': m['english_translation'],
-                        'pronunciation': m.get('pronunciation_guide', ''),
-                        'context': m.get('context_explanation', '')
+                        'pronunciation': m['pronunciation_guide'],
+                        'context': m['context_explanation']
                     }
                     for m in matches
                 ]
@@ -362,7 +319,7 @@ async def translate_phrase(
             }
     
     except Exception as e:
-        logger.error(f"Phrase translation error: {e}", exc_info=True)
+        logger.error(f"Phrase translation error: {e}")
         return {
             'success': False,
             'error': str(e)
@@ -410,20 +367,18 @@ async def explain_kolokwa_phrase(phrase: str) -> Dict[str, Any]:
                     'id': row['id'],
                     'kolokwa': row['koloqua_text'],
                     'english': row['english_translation'],
-                    'literal': row['literal_translation'] or '',
+                    'literal': row['literal_translation'],
                     'type': row['entry_type'],
-                    'pronunciation': row['pronunciation_guide'] or '',
-                    'context': row['context_explanation'] or '',
-                    'cultural_notes': row['cultural_notes'] or '',
-                    'region': row['region_specific'] or '',
+                    'pronunciation': row['pronunciation_guide'],
+                    'context': row['context_explanation'],
+                    'cultural_notes': row['cultural_notes'],
+                    'region': row['region_specific'],
                     'example': {
-                        'kolokwa': row['example_sentence_koloqua'] or '',
-                        'english': row['example_sentence_english'] or ''
+                        'kolokwa': row['example_sentence_koloqua'],
+                        'english': row['example_sentence_english']
                     } if row['example_sentence_koloqua'] else None
                 }
                 explanations.append(explanation)
-            
-            logger.info(f"Explanation for '{phrase}': {len(explanations)} results")
             
             return {
                 'success': True,
@@ -433,7 +388,7 @@ async def explain_kolokwa_phrase(phrase: str) -> Dict[str, Any]:
             }
     
     except Exception as e:
-        logger.error(f"Explanation error: {e}", exc_info=True)
+        logger.error(f"Explanation error: {e}")
         return {
             'success': False,
             'error': str(e)
@@ -441,18 +396,6 @@ async def explain_kolokwa_phrase(phrase: str) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    try:
-        logger.info("=" * 60)
-        logger.info("Starting Kolokwa Translation MCP Server (STDIO)")
-        logger.info(f"Database: {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-        logger.info(f"OpenAI: {'Configured' if OPENAI_API_KEY else 'NOT configured'}")
-        logger.info("=" * 60)
-        
-        # Run with stdio transport
-        mcp.run(transport="stdio")
-        
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
-    except Exception as e:
-        logger.error(f"Server error: {e}", exc_info=True)
-        sys.exit(1)
+    # Run with stdio transport for Claude Desktop
+    logger.info("Starting Kolokwa Translation MCP Server with stdio transport...")
+    mcp.run(transport="stdio")

@@ -276,3 +276,136 @@ class LeaderboardView(LoginRequiredMixin, TemplateView):
         ).count()
         
         return context
+
+
+
+from django.views.generic import UpdateView
+from django.contrib import messages
+from django.urls import reverse_lazy
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
+
+class SMSPreferencesView(LoginRequiredMixin, UpdateView):
+    """View for users to manage their SMS notification preferences"""
+    template_name = 'account/sms_preferences.html'
+    model = User
+    fields = [
+        'phone_number',
+        'sms_entry_verified',
+        'sms_badge_earned',
+        'sms_level_up',
+        'sms_leaderboard',
+        'sms_streak_milestone',
+        'sms_needs_revision',
+        'sms_daily_challenge',
+    ]
+    success_url = reverse_lazy('users:sms-preferences')
+    
+    def get_object(self):
+        return self.request.user
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'SMS notification preferences updated successfully!')
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['has_phone'] = bool(self.request.user.phone_number)
+        return context
+
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def sms_preferences_api(request):
+    """
+    API endpoint for managing SMS preferences
+    
+    GET - Retrieve current preferences
+    PUT/PATCH - Update preferences
+    """
+    user = request.user
+    
+    if request.method == 'GET':
+        return Response({
+            'phone_number': user.phone_number or '',
+            'preferences': {
+                'entry_verified': user.sms_entry_verified,
+                'badge_earned': user.sms_badge_earned,
+                'level_up': user.sms_level_up,
+                'leaderboard': user.sms_leaderboard,
+                'streak_milestone': user.sms_streak_milestone,
+                'needs_revision': user.sms_needs_revision,
+                'daily_challenge': user.sms_daily_challenge,
+            }
+        })
+    
+    elif request.method in ['PUT', 'PATCH']:
+        # Update phone number if provided
+        if 'phone_number' in request.data:
+            user.phone_number = request.data['phone_number']
+        
+        # Update preferences if provided
+        preferences = request.data.get('preferences', {})
+        if 'entry_verified' in preferences:
+            user.sms_entry_verified = preferences['entry_verified']
+        if 'badge_earned' in preferences:
+            user.sms_badge_earned = preferences['badge_earned']
+        if 'level_up' in preferences:
+            user.sms_level_up = preferences['level_up']
+        if 'leaderboard' in preferences:
+            user.sms_leaderboard = preferences['leaderboard']
+        if 'streak_milestone' in preferences:
+            user.sms_streak_milestone = preferences['streak_milestone']
+        if 'needs_revision' in preferences:
+            user.sms_needs_revision = preferences['needs_revision']
+        if 'daily_challenge' in preferences:
+            user.sms_daily_challenge = preferences['daily_challenge']
+        
+        user.save()
+        
+        return Response({
+            'message': 'Preferences updated successfully',
+            'phone_number': user.phone_number or '',
+            'preferences': {
+                'entry_verified': user.sms_entry_verified,
+                'badge_earned': user.sms_badge_earned,
+                'level_up': user.sms_level_up,
+                'leaderboard': user.sms_leaderboard,
+                'streak_milestone': user.sms_streak_milestone,
+                'needs_revision': user.sms_needs_revision,
+                'daily_challenge': user.sms_daily_challenge,
+            }
+        })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def test_sms_notification(request):
+    """
+    API endpoint to send a test SMS notification
+    Useful for users to verify their phone number works
+    """
+    from utils.sms_notifications import sms_service
+    
+    user = request.user
+    
+    if not user.phone_number:
+        return Response({
+            'error': 'No phone number on file'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    message = f"🧪 Test notification from Kolokwa! Your phone number is correctly set up. - {user.username}"
+    
+    success = sms_service.send_sms(user.phone_number, message)
+    
+    if success:
+        return Response({
+            'message': 'Test SMS sent successfully! Check your phone.'
+        })
+    else:
+        return Response({
+            'error': 'Failed to send test SMS. Please check your phone number format.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

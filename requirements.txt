@@ -54,3 +54,4 @@ Pillow>=11.0.0
 whitenoise==6.6.0
 workos==5.31.2
 openai==2.6.0
+twilio>=9.8.5

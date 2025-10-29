@@ -283,6 +283,34 @@ LOGGING = {
     },
 }
 
+
+# Twilio credentials from environment variables
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')  # Format: +1234567890
+
+# SMS Notification Settings
+SMS_NOTIFICATIONS_ENABLED = config('SMS_NOTIFICATIONS_ENABLED', default=True, cast=bool)
+
+# User preferences for SMS notifications (can be overridden in User model)
+DEFAULT_SMS_PREFERENCES = {
+    'entry_verified': True,
+    'badge_earned': True,
+    'level_up': True,
+    'leaderboard_change': False,  # Only for top 10 by default
+    'streak_milestone': True,
+    'needs_revision': True,
+    'daily_challenge': False,  # Opt-in only
+    'welcome': True,
+}
+
+# Rate limiting for SMS (prevents spam)
+SMS_RATE_LIMIT_SECONDS = 300  # 5 minutes between SMS to same user
+
+# Minimum point threshold to trigger SMS notification
+SMS_POINTS_THRESHOLD = 5  # Only send SMS for 5+ points earned
+
+
 # Celery Configuration
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379')
 CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379')

@@ -1,12 +1,17 @@
-# gamification/utils.py
+# gamification/utils.py - Updated with SMS notifications
+
 from django.utils import timezone
 from django.db.models import Count, F
 from django.db import transaction
+from django.conf import settings
 from .models import Badge, UserBadge, PointTransaction, UserStreak
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def award_points(user, points, transaction_type, description):
-    """Award points to a user and create transaction record"""
+    """Award points to a user and create transaction record with SMS notification"""
     if points == 0:
         return None
     
@@ -28,6 +33,27 @@ def award_points(user, points, transaction_type, description):
             user.verifications_count = F('verifications_count') + 1
             user.save(update_fields=['verifications_count'])
             user.refresh_from_db(fields=['verifications_count'])
+        
+        # Update user points
+        old_level = user.level
+        user.points = F('points') + points
+        user.save(update_fields=['points'])
+        user.refresh_from_db(fields=['points'])
+        
+        # Update level and send SMS if level changed
+        user.update_level()
+        
+        # Send SMS notification for significant points (only if not a level-up)
+        if (user.level == old_level and 
+            getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False) and 
+            points >= getattr(settings, 'SMS_POINTS_THRESHOLD', 5)):
+            
+            if hasattr(user, 'can_receive_sms') and user.can_receive_sms('entry_verified'):
+                try:
+                    from utils.sms_notifications import send_points_notification
+                    send_points_notification(user, points, description)
+                except Exception as e:
+                    logger.error(f"Failed to send points SMS to {user.email}: {e}")
         
         # Check for new badges (avoid recursion by checking if it's not an achievement transaction)
         if transaction_type != 'achievement':
@@ -67,6 +93,19 @@ def handle_entry_verification(entry, verifier):
         entry.points_awarded = contributor_points
         entry.save(update_fields=['points_awarded'])
     
+    # Send SMS notification to contributor
+    if getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False):
+        if hasattr(entry.contributor, 'can_receive_sms') and entry.contributor.can_receive_sms('entry_verified'):
+            try:
+                from utils.sms_notifications import send_verification_notification
+                send_verification_notification(
+                    entry.contributor, 
+                    entry, 
+                    verifier.username
+                )
+            except Exception as e:
+                logger.error(f"Failed to send verification SMS: {e}")
+    
     return {
         'verifier_points': verifier_points,
         'contributor_points': contributor_points
@@ -86,6 +125,19 @@ def handle_entry_rejection(entry, verifier):
         'verification', 
         f'Reviewed entry: {entry.koloqua_text}'
     )
+    
+    # Optionally notify contributor about rejection
+    if getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False):
+        if hasattr(entry.contributor, 'can_receive_sms') and entry.contributor.can_receive_sms('needs_revision'):
+            try:
+                from utils.sms_notifications import sms_service
+                message = (
+                    f"⚠️ Your Kolokwa entry '{entry.koloqua_text}' was marked as incorrect. "
+                    f"Please review and update it at kolokwa.com"
+                )
+                sms_service.send_sms(entry.contributor.phone_number, message)
+            except Exception as e:
+                logger.error(f"Failed to send rejection SMS: {e}")
     
     return {
         'verifier_points': verifier_points,
@@ -114,8 +166,9 @@ def handle_new_contribution(entry):
 
 
 def update_user_streak(user):
-    """Update user's contribution streak"""
+    """Update user's contribution streak with SMS notifications"""
     streak, created = UserStreak.objects.get_or_create(user=user)
+    old_streak = streak.current_streak
     streak.update_streak()
     
     # Award streak bonuses
@@ -127,11 +180,22 @@ def update_user_streak(user):
             f'{streak.current_streak} day streak bonus!'
         )
     
+    # Send streak milestone notification
+    if getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False):
+        if hasattr(user, 'can_receive_sms') and user.can_receive_sms('streak_milestone'):
+            milestones = [3, 7, 14, 30, 60, 90, 180, 365]
+            if streak.current_streak in milestones and streak.current_streak != old_streak:
+                try:
+                    from utils.sms_notifications import send_streak_notification
+                    send_streak_notification(user, streak.current_streak)
+                except Exception as e:
+                    logger.error(f"Failed to send streak SMS to {user.email}: {e}")
+    
     return streak
 
 
 def check_and_award_badges(user):
-    """Check if user has earned any new badges"""
+    """Check if user has earned any new badges with SMS notifications"""
     # Get user's current stats
     user.refresh_from_db()  # Ensure we have latest data
     
@@ -177,6 +241,15 @@ def check_and_award_badges(user):
             user.save(update_fields=['points'])
             user.refresh_from_db(fields=['points'])
             user.update_level()
+            
+            # Send SMS notification for badge
+            if getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False):
+                if hasattr(user, 'can_receive_sms') and user.can_receive_sms('badge_earned'):
+                    try:
+                        from utils.sms_notifications import send_badge_notification
+                        send_badge_notification(user, badge)
+                    except Exception as e:
+                        logger.error(f"Failed to send badge SMS to {user.email}: {e}")
     
     return newly_earned
 
@@ -186,11 +259,11 @@ def check_special_badge_criteria(user, badge):
     # Example special badge criteria
     badge_name = badge.name.lower()
     
-    if 'first contribution' in badge_name:
+    if 'first contribution' in badge_name or 'first steps' in badge_name:
         return user.contributions_count >= 1
     
     elif 'helpful verifier' in badge_name:
-        return user.verifications_count >= 10
+        return user.verifications_count >= 10 or user.verifications_count >= 25
     
     elif 'community hero' in badge_name:
         # Must have contributions AND verifications
@@ -202,7 +275,6 @@ def check_special_badge_criteria(user, badge):
     
     elif 'early adopter' in badge_name:
         # Users who joined in the first month
-        from django.utils import timezone
         from datetime import timedelta
         early_date = timezone.now() - timedelta(days=365)  # Adjust as needed
         return user.date_joined <= early_date
@@ -222,15 +294,69 @@ def check_special_badge_criteria(user, badge):
     return False
 
 
+def update_leaderboard_ranks():
+    """
+    Update user ranks and send notifications for significant changes
+    Should be called periodically (e.g., daily via Celery task)
+    """
+    from django.contrib.auth import get_user_model
+    
+    User = get_user_model()
+    
+    # Get all users ordered by points
+    users = User.objects.filter(is_active=True).order_by('-points')
+    
+    notifications_sent = 0
+    
+    for rank, user in enumerate(users, start=1):
+        old_rank = getattr(user, 'previous_rank', 0) or 0
+        rank_change = old_rank - rank  # Positive means moved up
+        
+        # Update rank
+        if hasattr(user, 'previous_rank'):
+            user.previous_rank = rank
+            user.save(update_fields=['previous_rank'])
+        
+        # Send notification for significant changes
+        if old_rank > 0:  # Only notify if user had a previous rank
+            if getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False):
+                if hasattr(user, 'can_receive_sms') and user.can_receive_sms('leaderboard'):
+                    # Notify if moved up 5+ positions or in top 10
+                    if abs(rank_change) >= 5 or rank <= 10:
+                        try:
+                            from utils.sms_notifications import send_leaderboard_notification
+                            if send_leaderboard_notification(user, rank, rank_change):
+                                notifications_sent += 1
+                        except Exception as e:
+                            logger.error(f"Failed to send leaderboard SMS to {user.email}: {e}")
+    
+    logger.info(f"Leaderboard ranks updated. Sent {notifications_sent} notifications.")
+    return {
+        'total_users': users.count(),
+        'notifications_sent': notifications_sent
+    }
+
+
+def send_revision_notification(entry, comment):
+    """Send SMS notification when entry needs revision"""
+    user = entry.contributor
+    
+    if getattr(settings, 'SMS_NOTIFICATIONS_ENABLED', False):
+        if hasattr(user, 'can_receive_sms') and user.can_receive_sms('needs_revision'):
+            try:
+                from utils.sms_notifications import send_revision_notification
+                send_revision_notification(user, entry, comment)
+            except Exception as e:
+                logger.error(f"Failed to send revision SMS to {user.email}: {e}")
+
+
 def get_user_level_info(points):
     """Get user level information based on points"""
     levels = [
         (0, 'beginner', 'Beginner'),
-        (100, 'contributor', 'Contributor'),
+        (100, 'intermediate', 'Intermediate'),
         (500, 'expert', 'Expert'), 
-        (1000, 'master', 'Master'),
-        (2500, 'legend', 'Legend'),
-        (5000, 'champion', 'Kolokwa Champion'),
+        (1000, 'chief', 'Chief Linguist'),
     ]
     
     current_level = levels[0]
@@ -337,7 +463,7 @@ def create_sample_badges():
         {
             'name': 'Streak Master', 
             'description': 'Maintained a 30-day contribution streak',
-            'badge_type': 'streak',
+            'badge_type': 'special',
         },
     ]
     

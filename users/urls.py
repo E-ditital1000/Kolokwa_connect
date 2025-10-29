@@ -5,7 +5,7 @@ from .views import (
     UserRegistrationView, UserProfileView, UserListView,
     CurrentUserView, UpdateProfileView, UserContributionsView,
     ProfileView, EditProfileView, UserContributionsTemplateView,
-    LeaderboardView
+    LeaderboardView, SMSPreferencesView, sms_preferences_api, test_sms_notification
 )
 from .workos_views import workos_api_callback
 
@@ -18,6 +18,10 @@ urlpatterns = [
     path('profile/contributions/', UserContributionsTemplateView.as_view(), name='me-contributions'),
     path('profile/<str:username>/', ProfileView.as_view(), name='user-profile'),
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
+
+    path('sms-preferences/', SMSPreferencesView.as_view(), name='sms-preferences'),
+    path('api/sms-preferences/', sms_preferences_api, name='api-sms-preferences'),
+    path('api/test-sms/', test_sms_notification, name='api-test-sms'),
     
     # API endpoints
     path('api/register/', UserRegistrationView.as_view(), name='api-register'),

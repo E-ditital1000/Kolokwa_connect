@@ -7,20 +7,19 @@ import os
 import logging
 from typing import Optional, Dict, Any
 
-# Configure logging FIRST before any other imports
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Now import everything else
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Database configuration - but DON'T import asyncpg yet
+# Database configuration
 DB_CONFIG = {
     'host': os.getenv('DATABASE_HOST', 'localhost'),
     'port': int(os.getenv('DATABASE_PORT', '5432')),
@@ -35,48 +34,31 @@ from mcp.server.fastmcp import FastMCP
 # Initialize FastMCP server
 mcp = FastMCP("kolokwa-dictionary")
 
-# Database connection pool - will be initialized on first use
-_db_pool = None
 
-
-async def get_db_pool():
-    """Get or create database connection pool with lazy asyncpg import"""
-    global _db_pool
-    
-    if _db_pool is not None:
-        return _db_pool
-    
-    # Import asyncpg ONLY when actually needed
+def get_db_connection():
+    """Get database connection - returns connection object or raises exception"""
     import asyncpg
+    import asyncio
     
+    # Get or create event loop
     try:
-        if not DB_CONFIG['host'] or not DB_CONFIG['database']:
-            raise Exception("Missing required database configuration")
-        
-        logger.info(f"Connecting to database: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
-        
-        _db_pool = await asyncpg.create_pool(
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    # Create connection synchronously
+    conn = loop.run_until_complete(
+        asyncpg.connect(
             host=DB_CONFIG['host'],
             port=DB_CONFIG['port'],
             user=DB_CONFIG['user'],
             password=DB_CONFIG['password'],
             database=DB_CONFIG['database'],
-            min_size=1,
-            max_size=10,
-            command_timeout=30,
             timeout=10
         )
-        
-        # Test connection
-        async with _db_pool.acquire() as conn:
-            await conn.fetchval("SELECT 1")
-        
-        logger.info("Database connected successfully")
-        return _db_pool
-        
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        raise Exception(f"Database connection failed: {str(e)}")
+    )
+    return conn, loop
 
 
 @mcp.tool()
@@ -98,10 +80,19 @@ async def search_kolokwa(
     """
     limit = min(limit, 50)
     
+    import asyncpg
+    
     try:
-        pool = await get_db_pool()
+        conn = await asyncpg.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            timeout=10
+        )
         
-        async with pool.acquire() as conn:
+        try:
             if search_type == "kolokwa":
                 results = await conn.fetch("""
                     SELECT 
@@ -173,6 +164,9 @@ async def search_kolokwa(
                 'count': len(entries),
                 'entries': entries
             }
+        
+        finally:
+            await conn.close()
     
     except Exception as e:
         logger.error(f"Search error: {e}")
@@ -194,10 +188,19 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
     Returns:
         Complete entry details including metadata and examples
     """
+    import asyncpg
+    
     try:
-        pool = await get_db_pool()
+        conn = await asyncpg.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            timeout=10
+        )
         
-        async with pool.acquire() as conn:
+        try:
             row = await conn.fetchrow("""
                 SELECT 
                     e.id, e.koloqua_text, e.english_translation, e.literal_translation,
@@ -240,6 +243,9 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
                     'contributor': row['contributor_username']
                 }
             }
+        
+        finally:
+            await conn.close()
     
     except Exception as e:
         logger.error(f"Get entry error: {e}")
@@ -263,10 +269,19 @@ async def get_random_entries(count: int = 5, entry_type: Optional[str] = None) -
     """
     count = min(count, 20)
     
+    import asyncpg
+    
     try:
-        pool = await get_db_pool()
+        conn = await asyncpg.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            timeout=10
+        )
         
-        async with pool.acquire() as conn:
+        try:
             if entry_type:
                 results = await conn.fetch("""
                     SELECT 
@@ -308,6 +323,9 @@ async def get_random_entries(count: int = 5, entry_type: Optional[str] = None) -
                 'count': len(entries),
                 'entries': entries
             }
+        
+        finally:
+            await conn.close()
     
     except Exception as e:
         logger.error(f"Random entries error: {e}")
@@ -325,10 +343,19 @@ async def get_dictionary_stats() -> Dict[str, Any]:
     Returns:
         Dictionary statistics including total entries, contributors, and categories
     """
+    import asyncpg
+    
     try:
-        pool = await get_db_pool()
+        conn = await asyncpg.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            timeout=10
+        )
         
-        async with pool.acquire() as conn:
+        try:
             stats = await conn.fetchrow("""
                 SELECT 
                     COUNT(*) FILTER (WHERE status = 'verified') as verified_entries,
@@ -355,6 +382,9 @@ async def get_dictionary_stats() -> Dict[str, Any]:
                     }
                 }
             }
+        
+        finally:
+            await conn.close()
     
     except Exception as e:
         logger.error(f"Get stats error: {e}")
@@ -372,17 +402,31 @@ async def health_check() -> Dict[str, Any]:
     Returns:
         Server health status
     """
+    import asyncpg
+    
     try:
-        pool = await get_db_pool()
-        async with pool.acquire() as conn:
-            await conn.fetchval("SELECT 1")
+        conn = await asyncpg.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            timeout=10
+        )
         
-        return {
-            'success': True,
-            'status': 'healthy',
-            'server': 'kolokwa-dictionary',
-            'database': 'connected'
-        }
+        try:
+            await conn.fetchval("SELECT 1")
+            
+            return {
+                'success': True,
+                'status': 'healthy',
+                'server': 'kolokwa-dictionary',
+                'database': 'connected'
+            }
+        
+        finally:
+            await conn.close()
+    
     except Exception as e:
         logger.warning(f"Health check: {e}")
         return {
@@ -390,5 +434,5 @@ async def health_check() -> Dict[str, Any]:
             'status': 'running',
             'server': 'kolokwa-dictionary',
             'database': 'not_connected',
-            'note': 'Server running but database not connected. Configure DATABASE_HOST and DATABASE_PASSWORD environment variables.'
+            'note': 'Server running but database not connected. Configure DATABASE_HOST and DATABASE_PASSWORD.'
         }

@@ -92,6 +92,27 @@ async def test_openai_connection():
         return False
 
 
+async def test_mcp_import():
+    """Test if MCP server can be imported"""
+    try:
+        from run_dictionary_mcp import mcp
+        logger.info(f"✓ MCP server import successful")
+        logger.info(f"  Server name: {mcp.name}")
+        
+        # Try to get tool list
+        if hasattr(mcp, '_tools'):
+            logger.info(f"  Tools registered: {len(mcp._tools)}")
+            for tool_name in list(mcp._tools.keys())[:5]:
+                logger.info(f"    - {tool_name}")
+        
+        return True
+    except Exception as e:
+        logger.error(f"✗ MCP server import failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 async def main():
     """Run all tests"""
     logger.info("=" * 60)
@@ -99,6 +120,7 @@ async def main():
     logger.info("=" * 60)
     
     tests = [
+        ("MCP Server Import", test_mcp_import),
         ("Database Connection", test_database_connection),
         ("Dictionary Search", test_dictionary_search),
         ("OpenAI Connection", test_openai_connection),
@@ -119,7 +141,7 @@ async def main():
         logger.info(f"{status}: {test_name}")
     
     all_passed = all(results.values())
-    logger.info("\n" + ("All tests passed!" if all_passed else "Some tests failed!"))
+    logger.info("\n" + ("All tests passed! ✓" if all_passed else "Some tests failed! ✗"))
     
     return all_passed
 

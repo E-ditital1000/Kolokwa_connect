@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68.0"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -15,17 +15,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
-[tool.setuptools.packages.find]
-# Find packages only in kolokwa/src
-where = ["kolokwa/src"]
-include = ["kolokwa_mcp*"]
-# Explicitly exclude Django apps and other directories
-exclude = [
-    "users*",
-    "dictionary*", 
-    "nl_interact*",
-    "gamification*",
-    "templates*",
-    "database_backups*",
-    "Kolokwa_connect*"
-]
+[tool.setuptools]
+# Find packages in kolokwa/src directory
+packages = ["kolokwa_mcp"]
+package-dir = {"kolokwa_mcp" = "kolokwa/src/kolokwa_mcp"}

@@ -423,7 +423,8 @@ async def health_check() -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # Run with stdio transport for Claude Desktop
-    logger.info("Starting Kolokwa Dictionary MCP Server...")
+    # Auto-detect transport: use "sse" for cloud deployment, "stdio" for local
+    transport = os.getenv('MCP_TRANSPORT', 'sse')
+    logger.info(f"Starting Kolokwa Dictionary MCP Server with {transport} transport...")
     logger.info(f"Database: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
-    mcp.run(transport="stdio")
+    mcp.run(transport=transport)

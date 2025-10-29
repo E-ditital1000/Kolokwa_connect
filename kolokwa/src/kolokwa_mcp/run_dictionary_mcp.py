@@ -20,10 +20,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database configuration
+# Database configuration with fallback defaults
 DB_CONFIG = {
     'host': os.getenv('DATABASE_HOST', 'localhost'),
-    'port': int(os.getenv('DATABASE_PORT', 5432)),
+    'port': int(os.getenv('DATABASE_PORT', '5432')),
     'user': os.getenv('DATABASE_USER', 'postgres'),
     'password': os.getenv('DATABASE_PASSWORD', ''),
     'database': os.getenv('DATABASE_NAME', 'kolokwa_db')
@@ -35,24 +35,43 @@ from mcp.server.fastmcp import FastMCP
 # Initialize FastMCP server
 mcp = FastMCP("kolokwa-dictionary")
 
-# Database connection pool
+# Database connection pool - initialized lazily
 db_pool = None
+db_connection_failed = False
 
 
 async def get_db_pool():
-    """Get or create database connection pool"""
-    global db_pool
+    """Get or create database connection pool - with error handling"""
+    global db_pool, db_connection_failed
+    
+    if db_connection_failed:
+        raise Exception("Database connection previously failed. Please check your database configuration.")
+    
     if db_pool is None:
-        db_pool = await asyncpg.create_pool(
-            host=DB_CONFIG['host'],
-            port=DB_CONFIG['port'],
-            user=DB_CONFIG['user'],
-            password=DB_CONFIG['password'],
-            database=DB_CONFIG['database'],
-            min_size=2,
-            max_size=10
-        )
-        logger.info("Database connection pool initialized")
+        try:
+            # Validate required configuration
+            if not DB_CONFIG['host'] or not DB_CONFIG['database']:
+                db_connection_failed = True
+                raise Exception("Missing required database configuration (host or database name)")
+            
+            db_pool = await asyncpg.create_pool(
+                host=DB_CONFIG['host'],
+                port=DB_CONFIG['port'],
+                user=DB_CONFIG['user'],
+                password=DB_CONFIG['password'],
+                database=DB_CONFIG['database'],
+                min_size=1,
+                max_size=10,
+                command_timeout=30,
+                timeout=10  # Connection timeout
+            )
+            logger.info(f"Database connection pool initialized (host: {DB_CONFIG['host']}, db: {DB_CONFIG['database']})")
+            
+        except Exception as e:
+            db_connection_failed = True
+            logger.error(f"Failed to create database pool: {e}")
+            raise Exception(f"Database connection failed: {str(e)}")
+    
     return db_pool
 
 
@@ -74,7 +93,16 @@ async def search_kolokwa(
         Dictionary containing search results with entry details
     """
     limit = min(limit, 50)
-    pool = await get_db_pool()
+    
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        return {
+            'success': False,
+            'error': f'Database connection failed: {str(e)}',
+            'query': query
+        }
     
     try:
         async with pool.acquire() as conn:
@@ -170,7 +198,14 @@ async def get_entry_details(entry_id: int) -> Dict[str, Any]:
     Returns:
         Complete entry details including metadata and examples
     """
-    pool = await get_db_pool()
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        return {
+            'success': False,
+            'error': f'Database connection failed: {str(e)}'
+        }
     
     try:
         async with pool.acquire() as conn:
@@ -239,7 +274,15 @@ async def get_random_entries(count: int = 5, entry_type: Optional[str] = None) -
         List of random verified entries
     """
     count = min(count, 20)
-    pool = await get_db_pool()
+    
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        return {
+            'success': False,
+            'error': f'Database connection failed: {str(e)}'
+        }
     
     try:
         async with pool.acquire() as conn:
@@ -301,7 +344,14 @@ async def get_dictionary_stats() -> Dict[str, Any]:
     Returns:
         Dictionary statistics including total entries, contributors, and categories
     """
-    pool = await get_db_pool()
+    try:
+        pool = await get_db_pool()
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        return {
+            'success': False,
+            'error': f'Database connection failed: {str(e)}'
+        }
     
     try:
         async with pool.acquire() as conn:
@@ -340,7 +390,40 @@ async def get_dictionary_stats() -> Dict[str, Any]:
         }
 
 
+# Health check for deployment validation
+@mcp.tool()
+async def health_check() -> Dict[str, Any]:
+    """
+    Check if the MCP server is running properly.
+    
+    Returns:
+        Server health status
+    """
+    try:
+        # Try to connect to database
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        
+        return {
+            'success': True,
+            'status': 'healthy',
+            'server': 'kolokwa-dictionary',
+            'database': 'connected'
+        }
+    except Exception as e:
+        logger.warning(f"Health check warning: {e}")
+        return {
+            'success': True,
+            'status': 'running',
+            'server': 'kolokwa-dictionary',
+            'database': 'not_connected',
+            'note': 'Server is running but database connection failed. Tools will not work until database is accessible.'
+        }
+
+
 if __name__ == "__main__":
     # Run with stdio transport for Claude Desktop
-    logger.info("Starting Kolokwa Dictionary MCP Server with stdio transport...")
+    logger.info("Starting Kolokwa Dictionary MCP Server...")
+    logger.info(f"Database: {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
     mcp.run(transport="stdio")

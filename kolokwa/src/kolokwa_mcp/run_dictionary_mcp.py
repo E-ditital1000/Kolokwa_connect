@@ -120,18 +120,11 @@ async def get_entry_detail(entry_id: int):
         logger.error(f"Error retrieving entry detail: {e}")
         return {"success": False, "error": str(e)}
 
-import asyncio
-
 if __name__ == "__main__":
     logger.info("Starting Kolokwa Dictionary MCP Server...")
     logger.info(f"Database host: {DB_CONFIG['host']}")
-
     try:
-        # Prevent double event loop conflict
-        if asyncio.get_event_loop().is_running():
-            logger.warning("Async loop already running, skipping mcp.run()")
-        else:
-            mcp.run()
+        mcp.run()
     except KeyboardInterrupt:
         logger.info("Server stopped manually.")
     except Exception as e:

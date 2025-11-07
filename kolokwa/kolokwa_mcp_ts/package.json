@@ -1,0 +1,37 @@
+{
+  "name": "kolokwa-dictionary-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for the Liberian Kolokwa Dictionary platform",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "kolokwa-dictionary-mcp": "build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc && node build/index.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "dictionary",
+    "kolokwa",
+    "liberia",
+    "translation"
+  ],
+  "author": "Kolokwa Connect",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

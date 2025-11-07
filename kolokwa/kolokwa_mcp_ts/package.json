@@ -1,7 +1,7 @@
 {
   "name": "kolokwa-dictionary-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for the Liberian Kolokwa Dictionary platform",
+  "version": "2.0.0",
+  "description": "Enhanced MCP server for the Liberian Kolokwa Dictionary platform with AI-powered translation",
   "type": "module",
   "main": "build/index.js",
   "bin": {
@@ -11,20 +11,26 @@
     "build": "tsc",
     "start": "node build/index.js",
     "dev": "tsc && node build/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "clean": "rm -rf build",
+    "rebuild": "npm run clean && npm run build"
   },
   "keywords": [
     "mcp",
     "dictionary",
     "kolokwa",
     "liberia",
-    "translation"
+    "translation",
+    "ai",
+    "natural-language",
+    "language-learning"
   ],
   "author": "Kolokwa Connect",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "openai": "^4.68.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -33,5 +39,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B-ditital1000/kolokwa_mcp_ts.git"
   }
 }

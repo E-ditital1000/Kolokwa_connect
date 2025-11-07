@@ -1,0 +1,115 @@
+server:
+  # The command to start your MCP server
+  command: node
+  args:
+    - build/index.js
+  
+  # Environment variables needed by your server
+  # Users will need to provide their own database credentials
+  env:
+    DATABASE_HOST: ${DATABASE_HOST:-metro.proxy.rlwy.net}
+    DATABASE_PORT: ${DATABASE_PORT:-28643}
+    DATABASE_USER: ${DATABASE_USER:-postgres}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    DATABASE_NAME: ${DATABASE_NAME:-railway}
+    # Optional: OpenAI for AI-powered natural language queries
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+# Metadata for Smithery listing
+metadata:
+  title: Kolokwa Dictionary
+  description: |
+    Access the Liberian Kolokwa Dictionary. Search for words, 
+    translate phrases, and get AI-powered language assistance with cultural context.
+    
+    Features:
+    • Search verified Kolokwa-English dictionary entries
+    • AI-powered natural language translation queries
+    • Build complex phrases from individual words
+    • Browse by categories (greetings, food, family, etc.)
+    • Get pronunciation guides and example sentences
+    • Learn cultural context and proper usage
+    • Discover popular and recently added words
+    
+    Perfect for learning authentic Liberian Kolokwa or contributing to language preservation.
+  
+  tags:
+    - dictionary
+    - translation
+    - language-learning
+    - kolokwa
+    - liberia
+    - african-languages
+    - natural-language
+    - ai-powered
+  
+  # Your project homepage
+  homepage: https://github.com/E-ditital1000/Kolokwa_connect/kolokwa/kolokwa_mcp_ts/
+  
+  # License
+  license: MIT
+  
+  # Author information
+  author:
+    name: Kolokwa Connect
+    email: support@kolokwaconnect.com
+    url: https://github.com/E-ditital1000/Kolokwa_connect/kolokwa/kolokwa_mcp_ts/
+
+# Documentation links
+documentation:
+  setup: |
+    ## Setup Instructions
+    
+    ### Required Environment Variables
+    You must provide database credentials to connect to the Kolokwa dictionary:
+    
+    ```
+    DATABASE_HOST=your-database-host
+    DATABASE_PORT=5432
+    DATABASE_USER=postgres
+    DATABASE_PASSWORD=your-password
+    DATABASE_NAME=kolokwa_db
+    ```
+    
+    ### Optional: AI-Powered Features
+    For natural language queries, provide an OpenAI API key:
+    
+    ```
+    OPENAI_API_KEY=sk-proj-your-key-here
+    ```
+    
+    All other features work without the OpenAI key.
+    
+  usage: |
+    ## Usage Examples
+    
+    ### Basic Search
+    Search for any word or phrase in the dictionary:
+    ```
+    search_kolokwa("hello")
+    ```
+    
+    ### AI Translation (requires OpenAI key)
+    Ask natural language questions:
+    ```
+    natural_language_query("How do I say 'good morning' in Kolokwa?")
+    ```
+    
+    ### Build Phrases
+    Construct phrases from individual words:
+    ```
+    construct_phrase(["I", "love", "you"], "english")
+    ```
+    
+    ### Browse by Category
+    Discover words by topic:
+    ```
+    get_categories()
+    get_entries_by_category(3)
+    ```
+    
+    ### Popular Words
+    Learn the most commonly used words first:
+    ```
+    get_popular_entries(20)
+    ```

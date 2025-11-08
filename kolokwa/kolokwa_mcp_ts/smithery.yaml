@@ -19,7 +19,7 @@ server:
 metadata:
   title: Kolokwa Dictionary
   description: |
-    Access the Liberian Kolokwa Dictionary. Search for words, 
+    Access the Liberian Kolokwa Dictionary directly from Claude. Search for words, 
     translate phrases, and get AI-powered language assistance with cultural context.
     
     Features:
@@ -44,7 +44,7 @@ metadata:
     - ai-powered
   
   # Your project homepage
-  homepage: https://github.com/E-ditital1000/Kolokwa_connect/kolokwa/kolokwa_mcp_ts/
+  homepage: https://github.com/E-ditital1000/Kolokwa_connect
   
   # License
   license: MIT
@@ -53,7 +53,7 @@ metadata:
   author:
     name: Kolokwa Connect
     email: support@kolokwaconnect.com
-    url: https://github.com/E-ditital1000/Kolokwa_connect/kolokwa/kolokwa_mcp_ts/
+    url: https://github.com/E-ditital1000
 
 # Documentation links
 documentation:

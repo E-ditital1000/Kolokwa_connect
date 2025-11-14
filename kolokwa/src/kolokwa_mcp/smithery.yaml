@@ -1,0 +1,70 @@
+# smithery.yaml (for Kolokwa Dictionary MCP)
+
+# --- Build Configuration (Crucial for Python/Django) ---
+# Tells Smithery to use a standard Python environment and install dependencies
+build:
+  # Use Python 3.11 environment
+  base_image: python:3.11-slim
+  
+  # Install dependencies before running the server
+  steps:
+    - command: pip
+      args:
+        - install
+        - -r
+        - requirements.txt
+
+# --- Server Command Configuration ---
+server:
+  # The command to start your Python MCP server
+  # We use the python interpreter and the specific dictionary runner script
+  command: python
+  args:
+    - run_dictionary_stdio.py
+  
+  # Environment variables needed by your server
+  env:
+    # DJANGO Settings Module is mandatory for setup()
+    DJANGO_SETTINGS_MODULE: Kolokwa_connect.settings
+    
+    # Database configuration (loaded by your script via settings)
+    # These must be set as Secrets in the Smithery UI for security
+    DATABASE_HOST: ${DATABASE_HOST}
+    DATABASE_PORT: ${DATABASE_PORT}
+    DATABASE_USER: ${DATABASE_USER}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    DATABASE_NAME: ${DATABASE_NAME}
+    
+    # Assuming your .env file also includes other essential Django settings
+    # like SECRET_KEY and allowed hosts, you may need to add them here.
+
+# --- Metadata for Smithery listing ---
+metadata:
+  title: Kolokwa Dictionary MCP
+  description: |
+    Access the Liberian Kolokwa Dictionary directly from the Kolokwa Connect project. 
+    Search for words, translate phrases, and get cultural context.
+    
+    Features:
+    - Search verified Kolokwa-English dictionary entries
+    - Get detailed entry information with examples and literal translations
+    - Browse random entries for learning and discovery
+    - Includes pronunciation guides and cultural notes
+    
+    Perfect for learning authentic Liberian Kolokwa.
+  
+  tags:
+    - dictionary
+    - translation
+    - language
+    - kolokwa
+    - liberia
+    - django
+    - postgres
+  
+  homepage: https://github.com/E-ditital1000/Kolokwa_connect
+  license: MIT
+  
+  author:
+    name: Kolokwa Connect
+    url: https://github.com/E-ditital1000
